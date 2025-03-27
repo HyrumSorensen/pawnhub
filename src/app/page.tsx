@@ -9,9 +9,9 @@ export default function Home() {
         <p className="text-lg text-gray-600 mb-6">
           Strategy starts here. Ready to test your mind?
         </p>
-        <Link href="/qoridor">
+        <Link href="/quoridor">
           <button className="px-6 py-3 bg-black text-white text-lg font-semibold rounded-xl shadow-md hover:bg-gray-800 transition">
-            Play Qoridor
+            Play Quoridor
           </button>
         </Link>
       </div>
