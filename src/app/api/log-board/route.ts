@@ -5,7 +5,7 @@ import path from 'path';
 export async function POST(req: NextRequest) {
   const body = await req.text();
 
-  const filePath = path.resolve(process.cwd(), 'quoridor', 'board-log.txt');
+  const filePath = path.resolve(process.cwd(), 'src/app/api/log-board', 'board-log.txt');
 
   fs.writeFileSync(filePath, body, { flag: 'a' }); // append to file
 
