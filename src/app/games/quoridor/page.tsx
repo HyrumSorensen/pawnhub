@@ -14,10 +14,16 @@ export default function HomePage() {
   const [firstSelectedCell, setFirstSelectedCell] = useState<[number, number]>([
     -1, -1,
   ]);
+  const [mode, setMode] = useState<"move" | "place-wall">("move");
+  const [hoveredWall, setHoveredWall] = useState<{
+    row: number;
+    col: number;
+    orientation: "horizontal" | "vertical";
+  } | null>(null);
   const tileSize = 65;
 
   function handlePlayerMove(r: number, c: number) {
-    if (!engine) return;
+    if (!engine || mode !== "move") return;
     if (
       firstSelectedCell[0] === -1 &&
       board[r][c] === engine.getState().currentPlayer.toString()
@@ -39,6 +45,25 @@ export default function HomePage() {
         setFirstSelectedCell([-1, -1]);
       }
     }
+  }
+
+  function handleWallPlacement(
+    row: number,
+    col: number,
+    orientation: "horizontal" | "vertical"
+  ) {
+    if (!engine) return;
+    const success = engine.placeWall(engine.getState().currentPlayer, {
+      row,
+      col,
+      orientation,
+    });
+
+    if (!success) {
+      console.warn("Invalid wall placement");
+    }
+
+    setHoveredWall(null);
   }
 
   function getDirection(
@@ -78,52 +103,143 @@ export default function HomePage() {
   return (
     <main className="flex flex-col gap-4 p-4 items-center">
       {engine && (
-        <div className="text-sm text-gray-700">
-          {/* <div className="flex gap-8">
-            <p>Current Player: Player {engine.getState().currentPlayer}</p>
-            <p>
-              Player 1 Walls Remaining:{" "}
-              {engine.getState().players[1].wallsRemaining}
-            </p>
-            <p>
-              Player 2 Walls Remaining:{" "}
-              {engine.getState().players[2].wallsRemaining}
-            </p>
-            <p>Total Walls Placed: {engine.getState().walls.length}</p>
-            {engine.getState().gameOver && (
-              <p className="text-green-700 font-semibold">
-                🎉 Player {engine.getState().winner} wins!
-              </p>
-            )}
-          </div> */}
-          {/* board */}
-          <div className="flex flex-col gap-2">
-            {board.map((row, r) => (
-              <div key={r} className="flex gap-2">
-                {row.map((cell, c) => (
-                  <div
-                    key={c}
-                    className="border border-gray-300"
-                    onClick={() => handlePlayerMove(r, c)}
-                  >
-                    {cell === "." && (
-                      <Tile width={tileSize} height={tileSize} />
-                    )}
-                    {cell === "1" && (
-                      <TilePlayer1 width={tileSize} height={tileSize} />
-                    )}
-                    {cell === "2" && (
-                      <TilePlayer2 width={tileSize} height={tileSize} />
-                    )}
-                    {cell === "X" && (
-                      <TileValid width={tileSize} height={tileSize} />
-                    )}
-                  </div>
-                ))}
-              </div>
-            ))}
+        <>
+          {/* Toggle Button */}
+          <div className="mb-4 flex gap-4">
+            <button
+              onClick={() =>
+                setMode((prev) => (prev === "move" ? "place-wall" : "move"))
+              }
+              className={`px-4 py-2 rounded ${
+                mode === "place-wall"
+                  ? "bg-blue-600 text-white"
+                  : "bg-gray-200"
+              }`}
+            >
+              {mode === "move" ? "Switch to Place Wall" : "Switch to Move Mode"}
+            </button>
           </div>
-        </div>
+
+          {/* Board Grid */}
+          <div
+            className="grid"
+            style={{
+              gridTemplateColumns: Array.from(
+                { length: board.length * 2 - 1 },
+                (_, i) => (i % 2 === 0 ? `${tileSize}px` : "6px")
+              ).join(" "),
+              gridTemplateRows: Array.from(
+                { length: board.length * 2 - 1 },
+                (_, i) => (i % 2 === 0 ? `${tileSize}px` : "6px")
+              ).join(" "),
+              gap: "0px",
+            }}
+          >
+            {Array.from({ length: board.length * 2 - 1 }, (_, rowIdx) =>
+              Array.from({ length: board.length * 2 - 1 }, (_, colIdx) => {
+                const isCell = rowIdx % 2 === 0 && colIdx % 2 === 0;
+                const cellRow = rowIdx / 2;
+                const cellCol = colIdx / 2;
+
+                if (isCell) {
+                  const cell = board[cellRow][cellCol];
+                  return (
+                    <div
+                      key={`${rowIdx}-${colIdx}`}
+                      className="border border-gray-300"
+                      onClick={() => handlePlayerMove(cellRow, cellCol)}
+                    >
+                      {cell === "." && (
+                        <Tile width={tileSize} height={tileSize} />
+                      )}
+                      {cell === "1" && (
+                        <TilePlayer1 width={tileSize} height={tileSize} />
+                      )}
+                      {cell === "2" && (
+                        <TilePlayer2 width={tileSize} height={tileSize} />
+                      )}
+                      {cell === "X" && (
+                        <TileValid width={tileSize} height={tileSize} />
+                      )}
+                    </div>
+                  );
+                }
+
+                const isVertical = rowIdx % 2 === 0 && colIdx % 2 === 1;
+                const isHorizontal = rowIdx % 2 === 1 && colIdx % 2 === 0;
+
+                const wallRow = Math.floor(rowIdx / 2);
+                const wallCol = Math.floor(colIdx / 2);
+
+                const wallExists = engine.getState().walls.some((w) => {
+                  if (isHorizontal && w.orientation === "horizontal") {
+                    return (
+                      (w.row === wallRow && w.col === wallCol) ||
+                      (w.row === wallRow && w.col === wallCol - 1)
+                    );
+                  }
+                  if (isVertical && w.orientation === "vertical") {
+                    return (
+                      (w.row === wallRow && w.col === wallCol) ||
+                      (w.row === wallRow - 1 && w.col === wallCol)
+                    );
+                  }
+                  return false;
+                });
+
+                const isHovered =
+                hoveredWall &&
+                ((hoveredWall.orientation === "horizontal" &&
+                  isHorizontal &&
+                  wallRow === hoveredWall.row &&
+                  (wallCol === hoveredWall.col || wallCol === hoveredWall.col + 1)) ||
+                 (hoveredWall.orientation === "vertical" &&
+                  isVertical &&
+                  wallCol === hoveredWall.col &&
+                  (wallRow === hoveredWall.row || wallRow === hoveredWall.row + 1)));
+              
+
+                return (
+                  <div
+                    key={`${rowIdx}-${colIdx}`}
+                    className={`transition-colors duration-100 ${
+                      wallExists
+                        ? "bg-red-500"
+                        : isHovered
+                        ? "bg-gray-400"
+                        : "bg-transparent"
+                    }`}
+                    onMouseEnter={() => {
+                      if (mode === "place-wall") {
+                        setHoveredWall({
+                          row: wallRow,
+                          col: wallCol,
+                          orientation: isHorizontal
+                            ? "horizontal"
+                            : "vertical",
+                        });
+                      }
+                    }}
+                    onMouseLeave={() => {
+                      if (mode === "place-wall") {
+                        setHoveredWall(null);
+                      }
+                    }}
+                    onClick={() => {
+                      if (mode === "place-wall") {
+                        handleWallPlacement(
+                          wallRow,
+                          wallCol,
+                          isHorizontal ? "horizontal" : "vertical"
+                        );
+                      }
+                    }}
+                  />
+                );
+              })
+            )}
+          </div>
+        </>
       )}
     </main>
   );
@@ -146,14 +262,6 @@ function renderBoard(engine: QuoridorGameEngine) {
   if (state.currentValidMoves.length > 0) {
     for (const move of state.currentValidMoves) {
       board[move.row][move.col] = "X";
-    }
-  }
-
-  for (const wall of state.walls) {
-    if (wall.orientation === "horizontal") {
-      board[wall.row][wall.col] = "-";
-    } else {
-      board[wall.row][wall.col] = "|";
     }
   }
 
