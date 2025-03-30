@@ -76,56 +76,75 @@ export default function HomePage() {
   }, []);
 
   return (
-    <main className="flex flex-col gap-4 p-4 items-center">
-      {engine && (
-        <div className="text-sm text-gray-700">
-          {/* <div className="flex gap-8">
-            <p>Current Player: Player {engine.getState().currentPlayer}</p>
-            <p>
-              Player 1 Walls Remaining:{" "}
-              {engine.getState().players[1].wallsRemaining}
-            </p>
-            <p>
-              Player 2 Walls Remaining:{" "}
-              {engine.getState().players[2].wallsRemaining}
-            </p>
-            <p>Total Walls Placed: {engine.getState().walls.length}</p>
-            {engine.getState().gameOver && (
-              <p className="text-green-700 font-semibold">
-                🎉 Player {engine.getState().winner} wins!
-              </p>
-            )}
-          </div> */}
-          {/* board */}
-          <div className="flex flex-col gap-2">
-            {board.map((row, r) => (
-              <div key={r} className="flex gap-2">
-                {row.map((cell, c) => (
-                  <div
-                    key={c}
-                    className="border border-gray-300"
-                    onClick={() => handlePlayerMove(r, c)}
-                  >
-                    {cell === "." && (
-                      <Tile width={tileSize} height={tileSize} />
-                    )}
-                    {cell === "1" && (
-                      <TilePlayer1 width={tileSize} height={tileSize} />
-                    )}
-                    {cell === "2" && (
-                      <TilePlayer2 width={tileSize} height={tileSize} />
-                    )}
-                    {cell === "X" && (
-                      <TileValid width={tileSize} height={tileSize} />
-                    )}
-                  </div>
-                ))}
-              </div>
-            ))}
+<div
+  className="grid"
+  style={{
+    gridTemplateColumns: Array.from({ length: board.length * 2 - 1 }, (_, i) =>
+      i % 2 === 0 ? `${tileSize}px` : "6px"
+    ).join(" "),
+    gridTemplateRows: Array.from({ length: board.length * 2 - 1 }, (_, i) =>
+      i % 2 === 0 ? `${tileSize}px` : "6px"
+    ).join(" "),
+    gap: "0px",
+  }}
+>
+  {Array.from({ length: board.length * 2 - 1 }, (_, rowIdx) =>
+    Array.from({ length: board.length * 2 - 1 }, (_, colIdx) => {
+      const isCell = rowIdx % 2 === 0 && colIdx % 2 === 0;
+      const cellRow = rowIdx / 2;
+      const cellCol = colIdx / 2;
+
+      if (isCell) {
+        const cell = board[cellRow][cellCol];
+        return (
+          <div
+            key={`${rowIdx}-${colIdx}`}
+            className="border border-gray-300"
+            onClick={() => handlePlayerMove(cellRow, cellCol)}
+          >
+            {cell === "." && <Tile width={tileSize} height={tileSize} />}
+            {cell === "1" && <TilePlayer1 width={tileSize} height={tileSize} />}
+            {cell === "2" && <TilePlayer2 width={tileSize} height={tileSize} />}
+            {cell === "X" && <TileValid width={tileSize} height={tileSize} />}
           </div>
-        </div>
-      )}
-    </main>
+        );
+      }
+
+      // Wall slots
+      const isVertical = rowIdx % 2 === 0 && colIdx % 2 === 1;
+      const isHorizontal = rowIdx % 2 === 1 && colIdx % 2 === 0;
+
+      const wallRow = Math.floor(rowIdx / 2);
+      const wallCol = Math.floor(colIdx / 2);
+
+      const wallExists = engine.getState().walls.some((w) => {
+        if (isHorizontal && w.orientation === "horizontal") {
+          return (
+            (w.row === wallRow && w.col === wallCol) ||
+            (w.row === wallRow && w.col === wallCol - 1)
+          );
+        }
+        if (isVertical && w.orientation === "vertical") {
+          return (
+            (w.row === wallRow && w.col === wallCol) ||
+            (w.row === wallRow - 1 && w.col === wallCol)
+          );
+        }
+        return false;
+      });
+      
+
+      return (
+        <div
+          key={`${rowIdx}-${colIdx}`}
+          className={wallExists ? "bg-red-500" : "bg-transparent"}
+        />
+      );
+    })
+  )}
+</div>
+
+
   );
 }
 
@@ -149,13 +168,8 @@ function renderBoard(engine: QuoridorGameEngine) {
     }
   }
 
-  for (const wall of state.walls) {
-    if (wall.orientation === "horizontal") {
-      board[wall.row][wall.col] = "-";
-    } else {
-      board[wall.row][wall.col] = "|";
-    }
-  }
+  // ❌ DO NOT put wall symbols into the board
+  // We'll render them visually from engine.getState().walls
 
   return board;
 }
