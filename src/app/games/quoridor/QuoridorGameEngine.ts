@@ -305,10 +305,10 @@ export class QuoridorGameEngine {
   }
 
   // Serialize game state (for saving/transmitting)
-  //   public serializeState(): string {
-  //     // Placeholder
-  //     return '';
-  //   }
+  public serializeState(): string {
+    return JSON.stringify(this.state);
+  }
+
 
   // Load from serialized game state
   //   public loadState(serialized: string): void {
