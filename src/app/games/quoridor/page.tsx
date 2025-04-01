@@ -31,13 +31,18 @@ export default function HomePage() {
   async function saveCurrentGameState() {
     if (!engine) return;
 
+    if (!userId) {
+      throw new Error("userId is required to save the game.");
+    }
+    
     await saveGame({
-      userId: userId, // 🔁 Replace with real user ID when using auth
+      userId: userId,
       gameId: "game_abc",
       moveNumber: moveNumber,
       serializedState: engine.serializeState(),
       createdAt: Date.now(),
     });
+    
 
     setMoveNumber((prev) => prev + 1);
   }
