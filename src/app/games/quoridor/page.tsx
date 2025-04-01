@@ -3,24 +3,44 @@
 import { useEffect, useState } from "react";
 import { QuoridorGameEngine } from "./QuoridorGameEngine";
 import { eventBus } from "./QuoridorEventSingleton";
+import { useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { useQuery } from "convex/react";
 import Tile from "./assets/Tile";
 import TileValid from "./assets/TileValid";
 import TilePlayer1 from "./assets/TilePlayer1";
 import TilePlayer2 from "./assets/TilePlayer2";
 
 export default function HomePage() {
+  const saveGame = useMutation(api.gameSaves.saveGame);
+  const userId = useQuery(api.users.getCurrentUserId);
+
   const [engine, setEngine] = useState<QuoridorGameEngine | null>(null);
   const [board, setBoard] = useState<string[][]>([]);
-  const [firstSelectedCell, setFirstSelectedCell] = useState<[number, number]>([
-    -1, -1,
-  ]);
+  const [firstSelectedCell, setFirstSelectedCell] = useState<[number, number]>([-1, -1]);
   const [mode, setMode] = useState<"move" | "place-wall">("move");
   const [hoveredWall, setHoveredWall] = useState<{
     row: number;
     col: number;
     orientation: "horizontal" | "vertical";
   } | null>(null);
+  const [moveNumber, setMoveNumber] = useState(0);
+
   const tileSize = 65;
+
+  async function saveCurrentGameState() {
+    if (!engine) return;
+
+    await saveGame({
+      userId: userId, // 🔁 Replace with real user ID when using auth
+      gameId: "game_abc",
+      moveNumber: moveNumber,
+      serializedState: engine.serializeState(),
+      createdAt: Date.now(),
+    });
+
+    setMoveNumber((prev) => prev + 1);
+  }
 
   function handlePlayerMove(r: number, c: number) {
     if (!engine || mode !== "move") return;
@@ -29,7 +49,7 @@ export default function HomePage() {
       board[r][c] === engine.getState().currentPlayer.toString()
     ) {
       setFirstSelectedCell([r, c]);
-      const validMoves = engine?.getValidMoves();
+      const validMoves = engine.getValidMoves();
       if (validMoves) {
         setBoard(renderBoard(engine));
       }
@@ -43,6 +63,7 @@ export default function HomePage() {
       ) {
         engine.movePawn(engine.getState().currentPlayer, direction);
         setFirstSelectedCell([-1, -1]);
+        saveCurrentGameState(); // ✅ Save after pawn move
       }
     }
   }
@@ -59,7 +80,9 @@ export default function HomePage() {
       orientation,
     });
 
-    if (!success) {
+    if (success) {
+      saveCurrentGameState();
+    } else {
       console.warn("Invalid wall placement");
     }
 
@@ -72,18 +95,10 @@ export default function HomePage() {
   ) {
     const rowDiff = secondSelectedCell[0] - firstSelectedCell[0];
     const colDiff = secondSelectedCell[1] - firstSelectedCell[1];
-    if (rowDiff === 1) {
-      return "down";
-    }
-    if (rowDiff === -1) {
-      return "up";
-    }
-    if (colDiff === 1) {
-      return "right";
-    }
-    if (colDiff === -1) {
-      return "left";
-    }
+    if (rowDiff === 1) return "down";
+    if (rowDiff === -1) return "up";
+    if (colDiff === 1) return "right";
+    if (colDiff === -1) return "left";
   }
 
   useEffect(() => {
@@ -104,23 +119,20 @@ export default function HomePage() {
     <main className="flex flex-col gap-4 p-4 items-center">
       {engine && (
         <>
-          {/* Toggle Button */}
           <div className="mb-4 flex gap-4">
             <button
               onClick={() =>
                 setMode((prev) => (prev === "move" ? "place-wall" : "move"))
               }
               className={`px-4 py-2 rounded ${
-                mode === "place-wall"
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-200"
+                mode === "place-wall" ? "bg-blue-600 text-white" : "bg-gray-200"
               }`}
             >
               {mode === "move" ? "Switch to Place Wall" : "Switch to Move Mode"}
             </button>
           </div>
 
-          {/* Board Grid */}
+          {/* Board */}
           <div
             className="grid"
             style={{
@@ -132,7 +144,6 @@ export default function HomePage() {
                 { length: board.length * 2 - 1 },
                 (_, i) => (i % 2 === 0 ? `${tileSize}px` : "6px")
               ).join(" "),
-              gap: "0px",
             }}
           >
             {Array.from({ length: board.length * 2 - 1 }, (_, rowIdx) =>
@@ -149,18 +160,10 @@ export default function HomePage() {
                       className="border border-gray-300"
                       onClick={() => handlePlayerMove(cellRow, cellCol)}
                     >
-                      {cell === "." && (
-                        <Tile width={tileSize} height={tileSize} />
-                      )}
-                      {cell === "1" && (
-                        <TilePlayer1 width={tileSize} height={tileSize} />
-                      )}
-                      {cell === "2" && (
-                        <TilePlayer2 width={tileSize} height={tileSize} />
-                      )}
-                      {cell === "X" && (
-                        <TileValid width={tileSize} height={tileSize} />
-                      )}
+                      {cell === "." && <Tile width={tileSize} height={tileSize} />}
+                      {cell === "1" && <TilePlayer1 width={tileSize} height={tileSize} />}
+                      {cell === "2" && <TilePlayer2 width={tileSize} height={tileSize} />}
+                      {cell === "X" && <TileValid width={tileSize} height={tileSize} />}
                     </div>
                   );
                 }
@@ -188,16 +191,15 @@ export default function HomePage() {
                 });
 
                 const isHovered =
-                hoveredWall &&
-                ((hoveredWall.orientation === "horizontal" &&
-                  isHorizontal &&
-                  wallRow === hoveredWall.row &&
-                  (wallCol === hoveredWall.col || wallCol === hoveredWall.col + 1)) ||
-                 (hoveredWall.orientation === "vertical" &&
-                  isVertical &&
-                  wallCol === hoveredWall.col &&
-                  (wallRow === hoveredWall.row || wallRow === hoveredWall.row + 1)));
-              
+                  hoveredWall &&
+                  ((hoveredWall.orientation === "horizontal" &&
+                    isHorizontal &&
+                    wallRow === hoveredWall.row &&
+                    (wallCol === hoveredWall.col || wallCol === hoveredWall.col + 1)) ||
+                    (hoveredWall.orientation === "vertical" &&
+                      isVertical &&
+                      wallCol === hoveredWall.col &&
+                      (wallRow === hoveredWall.row || wallRow === hoveredWall.row + 1)));
 
                 return (
                   <div
@@ -214,9 +216,7 @@ export default function HomePage() {
                         setHoveredWall({
                           row: wallRow,
                           col: wallCol,
-                          orientation: isHorizontal
-                            ? "horizontal"
-                            : "vertical",
+                          orientation: isHorizontal ? "horizontal" : "vertical",
                         });
                       }
                     }}
