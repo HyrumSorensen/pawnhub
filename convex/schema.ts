@@ -8,10 +8,9 @@ const schema = defineSchema({
   gameSaves: defineTable({
     userId: v.id("users"),
     gameId: v.string(),
-    moveNumber: v.number(),
-    serializedState: v.string(),
+    moveHistory: v.array(v.string()), // Array of serialized game states
     createdAt: v.number(), // UNIX timestamp
-  }).index("by_gameId_and_move", ["gameId", "moveNumber"]),
+  }).index("by_gameId", ["gameId"]),
 });
 
 export default schema;

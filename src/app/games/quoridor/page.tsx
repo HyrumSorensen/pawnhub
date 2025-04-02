@@ -3,20 +3,22 @@
 import { useEffect, useState } from "react";
 import { QuoridorGameEngine } from "./QuoridorGameEngine";
 import { eventBus } from "./QuoridorEventSingleton";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { useQuery } from "convex/react";
+import { v4 as uuidv4 } from "uuid";
 import Tile from "./assets/Tile";
 import TileValid from "./assets/TileValid";
 import TilePlayer1 from "./assets/TilePlayer1";
 import TilePlayer2 from "./assets/TilePlayer2";
 
 export default function HomePage() {
-  const saveGame = useMutation(api.gameSaves.saveGame);
+  const initializeGame = useMutation(api.gameSaves.initializeGame);
+  const appendGameState = useMutation(api.gameSaves.appendGameState);
   const userId = useQuery(api.users.getCurrentUserId);
 
   const [engine, setEngine] = useState<QuoridorGameEngine | null>(null);
   const [board, setBoard] = useState<string[][]>([]);
+  const [gameId, setGameId] = useState<string | null>(null);
   const [firstSelectedCell, setFirstSelectedCell] = useState<[number, number]>([-1, -1]);
   const [mode, setMode] = useState<"move" | "place-wall">("move");
   const [hoveredWall, setHoveredWall] = useState<{
@@ -24,31 +26,21 @@ export default function HomePage() {
     col: number;
     orientation: "horizontal" | "vertical";
   } | null>(null);
-  const [moveNumber, setMoveNumber] = useState(0);
 
   const tileSize = 65;
 
   async function saveCurrentGameState() {
-    if (!engine) return;
+    if (!engine || !gameId) return;
 
-    if (!userId) {
-      throw new Error("userId is required to save the game.");
-    }
-    
-    await saveGame({
-      userId: userId,
-      gameId: "game_abc",
-      moveNumber: moveNumber,
-      serializedState: engine.serializeState(),
-      createdAt: Date.now(),
+    await appendGameState({
+      gameId,
+      newState: engine.serializeState(),
     });
-    
-
-    setMoveNumber((prev) => prev + 1);
   }
 
   function handlePlayerMove(r: number, c: number) {
     if (!engine || mode !== "move") return;
+
     if (
       firstSelectedCell[0] === -1 &&
       board[r][c] === engine.getState().currentPlayer.toString()
@@ -68,7 +60,7 @@ export default function HomePage() {
       ) {
         engine.movePawn(engine.getState().currentPlayer, direction);
         setFirstSelectedCell([-1, -1]);
-        saveCurrentGameState(); // ✅ Save after pawn move
+        saveCurrentGameState();
       }
     }
   }
@@ -111,14 +103,27 @@ export default function HomePage() {
     setEngine(game);
     setBoard(renderBoard(game));
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (window as any).engine = game;
+    const newGameId = uuidv4();
+    setGameId(newGameId);
+
+    if (userId) {
+      initializeGame({
+        userId: userId,
+        gameId: newGameId,
+        initialState: game.serializeState(),
+        createdAt: Date.now(),
+      });
+    }
 
     const handler = () => {
       setBoard(renderBoard(game));
     };
     eventBus.on("gameStateUpdated", handler);
-  }, []);
+
+    return () => {
+      eventBus.off("gameStateUpdated", handler);
+    };
+  }, [userId]);
 
   return (
     <main className="flex flex-col gap-4 p-4 items-center">
