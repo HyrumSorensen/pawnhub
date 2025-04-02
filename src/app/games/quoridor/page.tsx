@@ -123,7 +123,7 @@ export default function HomePage() {
     return () => {
       eventBus.off("gameStateUpdated", handler);
     };
-  }, [userId]);
+  }, [userId, initializeGame]);
 
   return (
     <main className="flex flex-col gap-4 p-4 items-center">
