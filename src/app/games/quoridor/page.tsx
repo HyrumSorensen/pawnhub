@@ -40,30 +40,29 @@ export default function HomePage() {
 
   function handlePlayerMove(r: number, c: number) {
     if (!engine || mode !== "move") return;
-
+  
+    const currentPlayer = engine.getState().currentPlayer;
+  
     if (
       firstSelectedCell[0] === -1 &&
-      board[r][c] === engine.getState().currentPlayer.toString()
+      board[r][c] === currentPlayer.toString()
     ) {
       setFirstSelectedCell([r, c]);
-      const validMoves = engine.getValidMoves();
-      if (validMoves) {
-        setBoard(renderBoard(engine));
-      }
+      engine.getValidMoves();
+      setBoard(renderBoard(engine));
     } else {
-      const direction = getDirection(firstSelectedCell, [r, c]);
-      if (
-        direction &&
-        engine
-          .getState()
-          .currentValidMoves.some((move) => move.row === r && move.col === c)
-      ) {
-        engine.movePawn(engine.getState().currentPlayer, direction);
+      const success = engine.movePawnTo(currentPlayer, { row: r, col: c });
+      if (success) {
         setFirstSelectedCell([-1, -1]);
         saveCurrentGameState();
+      } else {
+        setFirstSelectedCell([-1, -1]);
+        engine.clearCurrentValidMoves();
       }
+      setBoard(renderBoard(engine));
     }
   }
+  
 
   function handleWallPlacement(
     row: number,
@@ -86,17 +85,6 @@ export default function HomePage() {
     setHoveredWall(null);
   }
 
-  function getDirection(
-    firstSelectedCell: [number, number],
-    secondSelectedCell: [number, number]
-  ) {
-    const rowDiff = secondSelectedCell[0] - firstSelectedCell[0];
-    const colDiff = secondSelectedCell[1] - firstSelectedCell[1];
-    if (rowDiff === 1) return "down";
-    if (rowDiff === -1) return "up";
-    if (colDiff === 1) return "right";
-    if (colDiff === -1) return "left";
-  }
 
   useEffect(() => {
     const game = new QuoridorGameEngine();
@@ -170,10 +158,11 @@ export default function HomePage() {
                       className="border border-gray-300"
                       onClick={() => handlePlayerMove(cellRow, cellCol)}
                     >
-                      {cell === "." && <Tile width={tileSize} height={tileSize} />}
+                      {/* Order matters here: show player icon above grey dot */}
                       {cell === "1" && <TilePlayer1 width={tileSize} height={tileSize} />}
                       {cell === "2" && <TilePlayer2 width={tileSize} height={tileSize} />}
                       {cell === "X" && <TileValid width={tileSize} height={tileSize} />}
+                      {cell === "." && <Tile width={tileSize} height={tileSize} />}
                     </div>
                   );
                 }
@@ -255,7 +244,7 @@ export default function HomePage() {
   );
 }
 
-function renderBoard(engine: QuoridorGameEngine) {
+function renderBoard(engine: QuoridorGameEngine): string[][] {
   const state = engine.getState();
   const board: string[][] = [];
 
@@ -266,14 +255,22 @@ function renderBoard(engine: QuoridorGameEngine) {
     }
   }
 
-  board[state.players[1].position.row][state.players[1].position.col] = "1";
-  board[state.players[2].position.row][state.players[2].position.col] = "2";
+  // Place valid move hints, unless occupied by a player
+  for (const move of state.currentValidMoves) {
+    const isPlayer1 = state.players[1].position.row === move.row && state.players[1].position.col === move.col;
+    const isPlayer2 = state.players[2].position.row === move.row && state.players[2].position.col === move.col;
 
-  if (state.currentValidMoves.length > 0) {
-    for (const move of state.currentValidMoves) {
-      board[move.row][move.col] = "X";
+    if (!isPlayer1 && !isPlayer2) {
+      board[move.row][move.col] = "X"; // Valid move indicator
     }
   }
 
+  // Place players (always on top)
+  const p1 = state.players[1].position;
+  const p2 = state.players[2].position;
+  board[p1.row][p1.col] = "1";
+  board[p2.row][p2.col] = "2";
+
   return board;
 }
+
