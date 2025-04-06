@@ -11,6 +11,14 @@ const schema = defineSchema({
     moveHistory: v.array(v.string()), // Array of serialized game states
     createdAt: v.number(), // UNIX timestamp
   }).index("by_gameId", ["gameId"]),
+
+  games: defineTable({
+    room: v.string(),
+    player1: v.id("users"),
+    player2: v.optional(v.id("users")),
+    state: v.string(),
+    createdAt: v.number(),
+  }).index("by_room", ["room"]),
 });
 
 export default schema;

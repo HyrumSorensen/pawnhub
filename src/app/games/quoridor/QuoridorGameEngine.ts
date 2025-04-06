@@ -69,22 +69,27 @@ export class QuoridorGameEngine {
     return JSON.parse(JSON.stringify(this.state));
   }
 
+  public setState(newState: GameState): void {
+    this.state = JSON.parse(JSON.stringify(newState));
+    eventBus.emit("gameStateUpdated", this.getState());
+  }
 
   public movePawnTo(playerId: PlayerId, dest: Position): boolean {
-    if (this.state.gameOver || this.state.currentPlayer !== playerId) return false;
-  
+    if (this.state.gameOver || this.state.currentPlayer !== playerId)
+      return false;
+
     const valid = this.state.currentValidMoves.some(
       (pos) => pos.row === dest.row && pos.col === dest.col
     );
     if (!valid) return false;
-  
+
     // Move
     this.state.players[playerId].position = { ...dest };
-  
+
     this.checkVictory();
     if (!this.state.gameOver) this.switchTurn();
     this.clearCurrentValidMoves();
-  
+
     eventBus.emit("gameStateUpdated", this.getState());
     return true;
   }
@@ -130,38 +135,38 @@ export class QuoridorGameEngine {
 
     return true;
   }
- 
+
   // Check for valid wall placement *********************************
   private isWallPlacementValid(wall: Wall): boolean {
     // Temporarily add the wall
     this.state.walls.push(wall);
-  
+
     const p1CanReach = this.canPlayerReachGoal(1);
     const p2CanReach = this.canPlayerReachGoal(2);
-  
+
     // Remove the temporary wall
     this.state.walls.pop();
-  
+
     return p1CanReach && p2CanReach;
   }
-  
+
   private canPlayerReachGoal(playerId: PlayerId): boolean {
     const start = this.state.players[playerId].position;
     const visited = new Set<string>();
     const queue: Position[] = [start];
-  
+
     const goalRow = playerId === 1 ? this.state.boardSize - 1 : 0;
-  
+
     while (queue.length > 0) {
       const current = queue.shift()!;
       const key = `${current.row},${current.col}`;
       if (visited.has(key)) continue;
-  
+
       visited.add(key);
-  
+
       if (playerId === 1 && current.row === goalRow) return true;
       if (playerId === 2 && current.row === goalRow) return true;
-  
+
       const neighbors = this.getValidNeighbors(current);
       for (const neighbor of neighbors) {
         const nKey = `${neighbor.row},${neighbor.col}`;
@@ -170,7 +175,7 @@ export class QuoridorGameEngine {
         }
       }
     }
-    
+
     return false; // No path to goal
   }
 
@@ -182,28 +187,28 @@ export class QuoridorGameEngine {
       pos.col < this.state.boardSize
     );
   }
-  
+
   private canMove(from: Position, to: Position): boolean {
     if (!this.isInBounds(to)) return false;
-  
+
     const dRow = to.row - from.row;
     const dCol = to.col - from.col;
-  
+
     let dir: Direction | null = null;
     if (dRow === -1 && dCol === 0) dir = "up";
     else if (dRow === 1 && dCol === 0) dir = "down";
     else if (dRow === 0 && dCol === -1) dir = "left";
     else if (dRow === 0 && dCol === 1) dir = "right";
     else return false;
-  
+
     const row = from.row;
     const col = from.col;
-  
+
     for (const wall of this.state.walls) {
       const wRow = wall.row;
       const wCol = wall.col;
       const orientation = wall.orientation;
-  
+
       if (dir === "up") {
         if (
           orientation === "horizontal" &&
@@ -214,7 +219,7 @@ export class QuoridorGameEngine {
           return false;
         }
       }
-  
+
       if (dir === "down") {
         if (
           orientation === "horizontal" &&
@@ -225,7 +230,7 @@ export class QuoridorGameEngine {
           return false;
         }
       }
-  
+
       if (dir === "left") {
         if (
           orientation === "vertical" &&
@@ -236,7 +241,7 @@ export class QuoridorGameEngine {
           return false;
         }
       }
-  
+
       if (dir === "right") {
         if (
           orientation === "vertical" &&
@@ -248,64 +253,59 @@ export class QuoridorGameEngine {
         }
       }
     }
-  
+
     return true;
   }
-  
-  
-  
+
   private getValidNeighbors(pos: Position): Position[] {
     const directions: Direction[] = ["up", "down", "left", "right"];
     const neighbors: Position[] = [];
-  
+
     const otherPlayerId: PlayerId = this.state.currentPlayer === 1 ? 2 : 1;
     const otherPos = this.state.players[otherPlayerId].position;
-  
+
     for (const dir of directions) {
       const deltaRow = dir === "up" ? -1 : dir === "down" ? 1 : 0;
       const deltaCol = dir === "left" ? -1 : dir === "right" ? 1 : 0;
-  
+
       const intermediate: Position = {
         row: pos.row + deltaRow,
         col: pos.col + deltaCol,
       };
-  
+
       // Skip if wall blocks path to intermediate square
       if (!this.canMove(pos, intermediate)) continue;
-  
+
       const isBlockedByOpponent =
         intermediate.row === otherPos.row && intermediate.col === otherPos.col;
-  
+
       if (!isBlockedByOpponent) {
         neighbors.push(intermediate);
         continue;
       }
-  
+
       // Jump logic: try to hop over
       const jump: Position = {
         row: intermediate.row + deltaRow,
         col: intermediate.col + deltaCol,
       };
-  
-      if (
-        this.isInBounds(jump) &&
-        this.canMove(intermediate, jump)
-      ) {
+
+      if (this.isInBounds(jump) && this.canMove(intermediate, jump)) {
         neighbors.push(jump); // Successful jump over opponent
       } else {
         // Can't jump — check sidesteps (diagonals)
         const sideDirs: Direction[] =
           dir === "up" || dir === "down" ? ["left", "right"] : ["up", "down"];
-  
+
         for (const side of sideDirs) {
           const sideDeltaRow = side === "up" ? -1 : side === "down" ? 1 : 0;
           const sideDeltaCol = side === "left" ? -1 : side === "right" ? 1 : 0;
-  
+
           const sideStep: Position = {
             row: intermediate.row + sideDeltaRow,
             col: intermediate.col + sideDeltaCol,
           };
-  
+
           if (
             this.isInBounds(sideStep) &&
             this.canMove(intermediate, sideStep)
@@ -315,24 +315,23 @@ export class QuoridorGameEngine {
         }
       }
     }
-  
+
     return neighbors;
   }
 
   //   // Get list of valid moves for a player
   public getValidMoves(): boolean {
     const playerPos = this.state.players[this.state.currentPlayer].position;
-  
+
     // Use full jump/side-step aware logic
     const validMoves = this.getValidNeighbors(playerPos);
-  
+
     // Update state
     this.state.currentValidMoves = validMoves;
-  
+
     console.log("Valid moves:", validMoves);
     return validMoves.length > 0;
   }
-  
 
   public clearCurrentValidMoves(): void {
     this.state.currentValidMoves = [];
@@ -362,7 +361,6 @@ export class QuoridorGameEngine {
   public serializeState(): string {
     return JSON.stringify(this.state);
   }
-
 
   // Load from serialized game state
   //   public loadState(serialized: string): void {
