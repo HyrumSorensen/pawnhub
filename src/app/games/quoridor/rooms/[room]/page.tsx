@@ -162,24 +162,30 @@ export default function HomePage() {
   function handleWallPlacement(
     row: number,
     col: number,
-    orientation: "horizontal" | "vertical"
+    orientation: "horizontal" | "vertical",
+    length: number = 2 // default to 2 if not specified
   ) {
+    console.log("length: ");
+    console.log(length)
     if (!engine) return;
+  
     const success = engine.placeWall(engine.getState().currentPlayer, {
       row,
       col,
       orientation,
+      length,
     });
-
+  
     if (success) {
       saveCurrentGameState();
     } else {
       console.warn("Invalid wall placement");
     }
-
+  
     setHoveredWall(null);
     updateCurrentGameState();
   }
+  
 
   return (
     <main className="flex flex-col gap-4 p-4 items-center">
@@ -250,34 +256,35 @@ export default function HomePage() {
                 const wallCol = Math.floor(colIdx / 2);
 
                 const wallExists = engine.getState().walls.some((w) => {
-                  if (isHorizontal && w.orientation === "horizontal") {
-                    return (
-                      (w.row === wallRow && w.col === wallCol) ||
-                      (w.row === wallRow && w.col === wallCol - 1)
-                    );
-                  }
-                  if (isVertical && w.orientation === "vertical") {
-                    return (
-                      (w.row === wallRow && w.col === wallCol) ||
-                      (w.row === wallRow - 1 && w.col === wallCol)
-                    );
+                  const length = w.length ?? 2;
+                  for (let i = 0; i < length; i++) {
+                    const wRow = w.orientation === "vertical" ? w.row + i : w.row;
+                    const wCol = w.orientation === "horizontal" ? w.col + i : w.col;
+                
+                    if (wRow === wallRow && wCol === wallCol && w.orientation === (isHorizontal ? "horizontal" : "vertical")) {
+                      return true;
+                    }
                   }
                   return false;
                 });
+                
 
-                const isHovered =
-                  hoveredWall &&
-                  ((hoveredWall.orientation === "horizontal" &&
-                    isHorizontal &&
-                    wallRow === hoveredWall.row &&
-                    (wallCol === hoveredWall.col ||
-                      wallCol === hoveredWall.col + 1)) ||
-                    (hoveredWall.orientation === "vertical" &&
-                      isVertical &&
-                      wallCol === hoveredWall.col &&
-                      (wallRow === hoveredWall.row ||
-                        wallRow === hoveredWall.row + 1)));
-
+                const isHovered = (() => {
+                  if (!hoveredWall) return false;
+                
+                  const { row: hRow, col: hCol, orientation } = hoveredWall;
+                
+                  if (orientation === "horizontal" && isHorizontal && wallRow === hRow) {
+                    return wallCol === hCol || wallCol === hCol + 1;
+                  }
+                
+                  if (orientation === "vertical" && isVertical && wallCol === hCol) {
+                    return wallRow === hRow || wallRow === hRow + 1;
+                  }
+                
+                  return false;
+                })();
+                
                 return (
                   <div
                     key={`${rowIdx}-${colIdx}`}
@@ -288,12 +295,43 @@ export default function HomePage() {
                           ? "bg-gray-400"
                           : "bg-transparent"
                     }`}
-                    onMouseEnter={() => {
+                    onMouseEnter={(e) => {
                       if (mode === "place-wall") {
+                        const target = e.target as HTMLDivElement;
+                        const rect = target.getBoundingClientRect();
+                        const offsetX = e.clientX - rect.left;
+                        const offsetY = e.clientY - rect.top;
+                
+                        const isHoveringLeft = offsetX < tileSize / 2;
+                        const isHoveringTop = offsetY < tileSize / 2;
+                
+                        let newRow = wallRow;
+                        let newCol = wallCol;
+                
+                        const orientation = isHorizontal ? "horizontal" : "vertical";
+                
+                        if (orientation === "horizontal") {
+                          if (wallCol == 0) {
+                            newCol = wallCol;
+                          } else {
+                            newCol = isHoveringLeft ? wallCol - 1 : wallCol;
+                          }
+            
+                        }
+                
+                        if (orientation === "vertical") {
+                          if (wallRow == 0) {
+                            newRow = wallRow;
+                          } else {
+                            newRow = isHoveringTop ? wallRow - 1 : wallRow;
+                          }
+                          
+                        }
+                
                         setHoveredWall({
-                          row: wallRow,
-                          col: wallCol,
-                          orientation: isHorizontal ? "horizontal" : "vertical",
+                          row: newRow,
+                          col: newCol,
+                          orientation,
                         });
                       }
                     }}
@@ -302,17 +340,41 @@ export default function HomePage() {
                         setHoveredWall(null);
                       }
                     }}
-                    onClick={() => {
-                      if (mode === "place-wall") {
-                        handleWallPlacement(
-                          wallRow,
-                          wallCol,
-                          isHorizontal ? "horizontal" : "vertical"
-                        );
+                    onClick={(e) => {
+                      if (mode === "place-wall" && hoveredWall) {
+                        const { row, col, orientation } = hoveredWall;
+                
+                        const rect = (e.target as HTMLDivElement).getBoundingClientRect();
+                        const offsetX = e.clientX - rect.left;
+                        const offsetY = e.clientY - rect.top;
+                
+                        const isHoveringLeft = offsetX < tileSize / 2;
+                        const isHoveringTop = offsetY < tileSize / 2;
+                
+                        const boardSize = engine.getState().boardSize;
+                
+                        let length = 2;
+                        console.log("column: ");
+                        console.log(col);
+                        if (
+                          (orientation === "horizontal" &&
+                            ((col === 0 && isHoveringLeft) ||
+                             (col === boardSize - 1 && !isHoveringLeft))) ||
+                          (orientation === "vertical" &&
+                            ((row === 0 && isHoveringTop) ||
+                             (row === boardSize - 1 && !isHoveringTop)))
+                        ) {
+                          length = 1;
+                        }
+                
+                        handleWallPlacement(row, col, orientation, length);
                       }
                     }}
                   />
                 );
+                
+                
+                
               })
             )}
           </div>

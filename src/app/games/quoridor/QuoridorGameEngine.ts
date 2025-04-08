@@ -16,6 +16,7 @@ export interface Wall {
   row: number; // Top-left coordinate of the wall
   col: number;
   orientation: Orientation;
+  length?: number; // Number of tiles the wall spans (defaults to 2 if not provided)
 }
 
 export interface GameState {
@@ -98,57 +99,84 @@ export class QuoridorGameEngine {
   public placeWall(playerId: PlayerId, wall: Wall): boolean {
     if (this.state.gameOver) return false;
     if (this.state.currentPlayer !== playerId) return false;
-
+  
     const player = this.state.players[playerId];
-
-    // Check if player has walls left
     if (player.wallsRemaining <= 0) return false;
-
-    // Check bounds
-    const maxIndex = this.state.boardSize - 2; // wall spans 2 cells
-    if (
-      wall.row < 0 ||
-      wall.col < 0 ||
-      wall.row > maxIndex ||
-      wall.col > maxIndex
-    ) {
-      return false;
+  
+    const wallLength = wall.length ?? 2; // Default to 2 if undefined
+  
+    // Check bounds based on orientation and length
+    const boardLimit = this.state.boardSize;
+    if (wall.row < 0 || wall.col < 0) return false;
+  
+    if (wall.orientation === 'horizontal') {
+      if (wall.col + wallLength > boardLimit || wall.row >= boardLimit - 1) return false;
+    } else if (wall.orientation === 'vertical') {
+      if (wall.row + wallLength > boardLimit || wall.col >= boardLimit - 1) return false;
     }
-
-    // Check for wall overlap
-    const isOverlap = this.state.walls.some(
-      (w) =>
-        w.row === wall.row &&
-        w.col === wall.col &&
-        w.orientation === wall.orientation
-    );
+  
+    // Check for wall overlap across all spanned tiles
+    const isOverlap = this.state.walls.some((w) => {
+      const wLength = w.length ?? 2;
+      if (w.orientation !== wall.orientation) return false;
+  
+      for (let i = 0; i < wLength; i++) {
+        const wRow = w.orientation === 'vertical' ? w.row + i : w.row;
+        const wCol = w.orientation === 'horizontal' ? w.col + i : w.col;
+  
+        for (let j = 0; j < wallLength; j++) {
+          const newRow = wall.orientation === 'vertical' ? wall.row + j : wall.row;
+          const newCol = wall.orientation === 'horizontal' ? wall.col + j : wall.col;
+  
+          if (wRow === newRow && wCol === newCol) return true;
+        }
+      }
+  
+      return false;
+    });
+  
     if (isOverlap) return false;
-
-    if (!this.isWallPlacementValid(wall)) return false;
-
+  
+    if (!this.isWallPlacementValid({ ...wall, length: wallLength })) return false;
+  
     // Place the wall
-    this.state.walls.push(wall);
+    this.state.walls.push({ ...wall, length: wallLength });
     this.state.players[playerId].wallsRemaining -= 1;
-
-    // Switch turn
+  
     this.switchTurn();
-
     return true;
   }
+  
 
   // Check for valid wall placement *********************************
   private isWallPlacementValid(wall: Wall): boolean {
-    // Temporarily add the wall
-    this.state.walls.push(wall);
-
+    const length = wall.length ?? 2;
+  
+    // Add all segments of the wall
+    const wallSegments: Wall[] = [];
+  
+    for (let i = 0; i < length; i++) {
+      const segment: Wall = {
+        row: wall.orientation === 'vertical' ? wall.row + i : wall.row,
+        col: wall.orientation === 'horizontal' ? wall.col + i : wall.col,
+        orientation: wall.orientation,
+        length: 1, // each segment is 1 tile long
+      };
+      this.state.walls.push(segment);
+      wallSegments.push(segment);
+    }
+  
     const p1CanReach = this.canPlayerReachGoal(1);
     const p2CanReach = this.canPlayerReachGoal(2);
-
-    // Remove the temporary wall
-    this.state.walls.pop();
-
+  
+    // Remove the temporary wall segments
+    for (let i = 0; i < wallSegments.length; i++) {
+      this.state.walls.pop();
+    }
+  
     return p1CanReach && p2CanReach;
   }
+  
 
   private canPlayerReachGoal(playerId: PlayerId): boolean {
     const start = this.state.players[playerId].position;
