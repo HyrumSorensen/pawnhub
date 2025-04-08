@@ -170,13 +170,7 @@ export default function HomePage() {
     length: number = 2
   ) {
     if (!engine) return;
-  
-    console.log("Placing wall:", {
-      row,
-      col,
-      orientation,
-      length,
-    });
+
   
     const success = engine.placeWall(engine.getState().currentPlayer, {
       row,
@@ -322,7 +316,7 @@ export default function HomePage() {
                           ? "bg-gray-400"
                           : "bg-transparent"
                     }`}
-                    onMouseEnter={(e) => {
+                    onMouseMove={(e) => {
                       if (mode === "place-wall") {
                         const target = e.target as HTMLDivElement;
                         const rect = target.getBoundingClientRect();
@@ -336,7 +330,8 @@ export default function HomePage() {
                         let newCol = wallCol;
                         let length = 2;
                     
-                        const orientation = isHorizontal ? "horizontal" : "vertical";
+                        const orientation = (isHorizontal ? "horizontal" : "vertical") as "horizontal" | "vertical";
+
                         let hoverSide: "left" | "right" | "top" | "bottom" = "left";
                     
                         const boardSize = engine?.getState().boardSize ?? 9;
@@ -385,26 +380,27 @@ export default function HomePage() {
                           }
                         }
                     
-                        console.log("Hovered wall preview:");
-                        console.log({
-                          wallRow,
-                          wallCol,
-                          newRow,
-                          newCol,
-                          orientation,
-                          hoverSide,
-                          calculatedLength: length,
-                        });
-                    
-                        setHoveredWall({
+                        const newHovered = {
                           row: newRow,
                           col: newCol,
                           orientation,
                           length,
                           hoverSide,
-                        });
+                        };
+                    
+                        if (
+                          !hoveredWall ||
+                          hoveredWall.row !== newHovered.row ||
+                          hoveredWall.col !== newHovered.col ||
+                          hoveredWall.orientation !== newHovered.orientation ||
+                          hoveredWall.length !== newHovered.length ||
+                          hoveredWall.hoverSide !== newHovered.hoverSide
+                        ) {
+                          setHoveredWall(newHovered);
+                        }
                       }
                     }}
+                    
                     
                     
                     onMouseLeave={() => {
