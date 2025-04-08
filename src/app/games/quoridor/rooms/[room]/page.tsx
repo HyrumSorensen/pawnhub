@@ -353,7 +353,7 @@ export default function HomePage() {
                               length = 2;
                             }
                           } else {
-                            if (wallCol >= boardSize - 2) {
+                            if (wallCol >= boardSize - 1) {
                               newCol = wallCol;
                               length = 1;
                             } else {
@@ -375,7 +375,7 @@ export default function HomePage() {
                               length = 2;
                             }
                           } else {
-                            if (wallRow >= boardSize - 2) {
+                            if (wallRow >= boardSize - 1) {
                               newRow = wallRow;
                               length = 1;
                             } else {
