@@ -152,30 +152,31 @@ export class QuoridorGameEngine {
   private isWallPlacementValid(wall: Wall): boolean {
     const length = wall.length ?? 2;
   
-    // Add all segments of the wall
-    const wallSegments: Wall[] = [];
+    // Simulate new wall segments
+    const simulatedWallSegments: Wall[] = [];
   
     for (let i = 0; i < length; i++) {
-      const segment: Wall = {
+      simulatedWallSegments.push({
         row: wall.orientation === 'vertical' ? wall.row + i : wall.row,
         col: wall.orientation === 'horizontal' ? wall.col + i : wall.col,
         orientation: wall.orientation,
-        length: 1, // each segment is 1 tile long
-      };
-      this.state.walls.push(segment);
-      wallSegments.push(segment);
+        length: 1,
+      });
     }
+  
+    // Temporarily add simulated walls to a copy of state
+    const originalWalls = [...this.state.walls];
+    this.state.walls.push(...simulatedWallSegments);
   
     const p1CanReach = this.canPlayerReachGoal(1);
     const p2CanReach = this.canPlayerReachGoal(2);
   
-    // Remove the temporary wall segments
-    for (let i = 0; i < wallSegments.length; i++) {
-      this.state.walls.pop();
-    }
+    // Restore the original wall state
+    this.state.walls = originalWalls;
   
     return p1CanReach && p2CanReach;
   }
+  
   
 
   private canPlayerReachGoal(playerId: PlayerId): boolean {
@@ -218,72 +219,74 @@ export class QuoridorGameEngine {
 
   private canMove(from: Position, to: Position): boolean {
     if (!this.isInBounds(to)) return false;
-
+  
     const dRow = to.row - from.row;
     const dCol = to.col - from.col;
-
+  
     let dir: Direction | null = null;
     if (dRow === -1 && dCol === 0) dir = "up";
     else if (dRow === 1 && dCol === 0) dir = "down";
     else if (dRow === 0 && dCol === -1) dir = "left";
     else if (dRow === 0 && dCol === 1) dir = "right";
     else return false;
-
+  
     const row = from.row;
     const col = from.col;
-
+  
     for (const wall of this.state.walls) {
       const wRow = wall.row;
       const wCol = wall.col;
       const orientation = wall.orientation;
-
+      const wLength = wall.length ?? 2;
+  
       if (dir === "up") {
         if (
           orientation === "horizontal" &&
           row === wRow + 1 &&
           col >= wCol &&
-          col < wCol + 2
+          col < wCol + wLength
         ) {
           return false;
         }
       }
-
+  
       if (dir === "down") {
         if (
           orientation === "horizontal" &&
           row === wRow &&
           col >= wCol &&
-          col < wCol + 2
+          col < wCol + wLength
         ) {
           return false;
         }
       }
-
+  
       if (dir === "left") {
         if (
           orientation === "vertical" &&
           col === wCol + 1 &&
           row >= wRow &&
-          row < wRow + 2
+          row < wRow + wLength
         ) {
           return false;
         }
       }
-
+  
       if (dir === "right") {
         if (
           orientation === "vertical" &&
           col === wCol &&
           row >= wRow &&
-          row < wRow + 2
+          row < wRow + wLength
         ) {
           return false;
         }
       }
     }
-
+  
     return true;
   }
+  
 
   private getValidNeighbors(pos: Position): Position[] {
     const directions: Direction[] = ["up", "down", "left", "right"];
