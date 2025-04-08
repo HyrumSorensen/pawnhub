@@ -20,8 +20,7 @@ export default function HomePage() {
   const joinGame = useMutation(api.games.joinGame);
   const updateGameState = useMutation(api.games.updateGameState);
   const getGameState = useQuery(api.games.getGameState, { room: roomId });
-  console.log(getGameState);
-
+  const setGameCompleted = useMutation(api.games.setGameCompleted);
   const initializeGame = useMutation(api.gameSaves.initializeGame);
   const appendGameState = useMutation(api.gameSaves.appendGameState);
   const userId = useQuery(api.users.getCurrentUserId);
@@ -45,16 +44,25 @@ export default function HomePage() {
   useEffect(() => {
     if (getGameState && engine) {
       try {
-        const newState = JSON.parse(getGameState);
-        if (newState) {
-          engine.setState(newState);
-          setBoard(renderBoard(engine));
+        const newState = JSON.parse(getGameState[getGameState.length - 1]);
+        if (newState.gameOver) {
+          setGameCompleted({ room: roomId });
+          if (newState.winner === 1) {
+            alert("Player 1 wins!");
+          } else {
+            alert("Player 2 wins!");
+          }
+        } else {
+          if (newState) {
+            engine.setState(newState);
+            setBoard(renderBoard(engine));
+          }
         }
       } catch (e) {
         console.error("Failed to parse game state:", e);
       }
     }
-  }, [getGameState, engine]);
+  }, [getGameState, engine, setGameCompleted, roomId]);
 
   // Effect to initialize the game
   useEffect(() => {
@@ -142,13 +150,13 @@ export default function HomePage() {
       if (success) {
         setFirstSelectedCell([-1, -1]);
         saveCurrentGameState();
+        updateCurrentGameState();
       } else {
         setFirstSelectedCell([-1, -1]);
         engine.clearCurrentValidMoves();
       }
       setBoard(renderBoard(engine));
     }
-    updateCurrentGameState();
   }
 
   function handleWallPlacement(

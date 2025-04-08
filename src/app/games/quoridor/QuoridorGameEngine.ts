@@ -329,7 +329,6 @@ export class QuoridorGameEngine {
     // Update state
     this.state.currentValidMoves = validMoves;
 
-    console.log("Valid moves:", validMoves);
     return validMoves.length > 0;
   }
 

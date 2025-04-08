@@ -23,8 +23,11 @@ export const createGame = mutation({
     await ctx.db.insert("games", {
       room: args.room,
       player1: args.player1,
-      state: args.initialState,
+      state: [args.initialState],
       createdAt: args.createdAt,
+      public: false,
+      game: "quoridor",
+      completed: false,
     });
   },
 });
@@ -73,7 +76,7 @@ export const updateGameState = mutation({
     }
 
     await ctx.db.patch(existingGame._id, {
-      state: args.state,
+      state: [...existingGame.state, args.state],
     });
   },
 });
@@ -89,5 +92,25 @@ export const getGameState = query({
       .first();
 
     return existingGame?.state;
+  },
+});
+
+export const setGameCompleted = mutation({
+  args: {
+    room: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const existingGame = await ctx.db
+      .query("games")
+      .filter((q) => q.eq(q.field("room"), args.room))
+      .first();
+
+    if (!existingGame) {
+      return { error: "Game not found" };
+    }
+
+    await ctx.db.patch(existingGame._id, {
+      completed: true,
+    });
   },
 });
