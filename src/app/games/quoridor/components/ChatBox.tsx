@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
-
+import { Id } from "@/convex/_generated/dataModel";
 interface ChatBoxProps {
   room: string;
-  playerId: string; // user ID to tag messages
+  playerId: Id<"users">; // user ID to tag messages
 }
 
 export default function ChatBox({ room, playerId }: ChatBoxProps) {
@@ -20,7 +20,7 @@ export default function ChatBox({ room, playerId }: ChatBoxProps) {
 
     await addChat({
       room,
-      player: playerId as any, // if using v.id("users"), might need casting
+      player: playerId,
       message: input,
     });
 
@@ -44,11 +44,14 @@ export default function ChatBox({ room, playerId }: ChatBoxProps) {
                 key={i}
                 className="bg-gray-100 text-black px-3 py-2 rounded-lg w-fit max-w-full break-words"
               >
-                <strong>{entry.player === playerId ? "You" : entry.player}:</strong>{" "}
+                <strong>
+                  {entry.player === playerId ? "You" : entry.player}:
+                </strong>{" "}
                 {entry.message}
               </div>
             );
           } catch (e) {
+            console.error(e);
             return null;
           }
         })}
