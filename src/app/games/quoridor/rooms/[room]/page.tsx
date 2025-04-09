@@ -445,7 +445,7 @@ export default function HomePage() {
           </div>
         </>
       )}
-      <ChatBox />
+      <ChatBox room={roomId} playerId={userId!}/>
       </div>
     </main>
   );

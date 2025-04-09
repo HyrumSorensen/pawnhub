@@ -1,34 +1,57 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useQuery, useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
 
-export default function ChatBox() {
-  const [messages, setMessages] = useState<string[]>([]);
+interface ChatBoxProps {
+  room: string;
+  playerId: string; // user ID to tag messages
+}
+
+export default function ChatBox({ room, playerId }: ChatBoxProps) {
+  const chat = useQuery(api.games.getGameChat, { room });
+  const addChat = useMutation(api.games.addGameChat);
+
   const [input, setInput] = useState("");
 
-  const sendMessage = () => {
+  const sendMessage = async () => {
     if (!input.trim()) return;
-    setMessages((prev) => [...prev, input]);
+
+    await addChat({
+      room,
+      player: playerId as any, // if using v.id("users"), might need casting
+      message: input,
+    });
+
     setInput("");
   };
 
   return (
     <div className="flex flex-col w-80 h-[500px] bg-white border border-gray-300 rounded-xl shadow-lg overflow-hidden">
-      {/* Title bar */}
+      {/* Title */}
       <div className="bg-black text-white text-center py-2 font-semibold text-sm tracking-wide">
         Game Chat
       </div>
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto space-y-2 p-3 bg-white">
-        {messages.map((msg, i) => (
-          <div
-            key={i}
-            className="bg-gray-100 text-black px-3 py-2 rounded-lg w-fit max-w-full break-words"
-          >
-            {msg}
-          </div>
-        ))}
+        {chat?.map((entryStr, i) => {
+          try {
+            const entry = JSON.parse(entryStr);
+            return (
+              <div
+                key={i}
+                className="bg-gray-100 text-black px-3 py-2 rounded-lg w-fit max-w-full break-words"
+              >
+                <strong>{entry.player === playerId ? "You" : entry.player}:</strong>{" "}
+                {entry.message}
+              </div>
+            );
+          } catch (e) {
+            return null;
+          }
+        })}
       </div>
 
       {/* Input */}

@@ -115,3 +115,45 @@ export const setGameCompleted = mutation({
     });
   },
 });
+
+export const getGameChat = query({
+  args: {
+    room: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const game = await ctx.db
+      .query("games")
+      .filter((q) => q.eq(q.field("room"), args.room))
+      .first();
+
+    return game?.chat ?? [];
+  },
+});
+
+export const addGameChat = mutation({
+  args: {
+    room: v.string(),
+    player: v.id("users"),
+    message: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const game = await ctx.db
+      .query("games")
+      .filter((q) => q.eq(q.field("room"), args.room))
+      .first();
+
+    if (!game) {
+      throw new Error("Game not found");
+    }
+
+    const newChatEntry = JSON.stringify({
+      player: args.player,
+      message: args.message,
+      createdAt: Date.now(),
+    });
+
+    await ctx.db.patch(game._id, {
+      chat: [...game.chat, newChatEntry],
+    });
+  },
+});
