@@ -16,7 +16,8 @@ const schema = defineSchema({
     room: v.string(),
     player1: v.id("users"),
     player2: v.optional(v.id("users")),
-    state: v.array(v.string()),
+    state: v.array(v.string()), // serialized game state
+    chat: v.array(v.string()),  // serialized chat messages
     createdAt: v.number(),
     public: v.boolean(),
     game: v.string(),

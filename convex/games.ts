@@ -24,6 +24,7 @@ export const createGame = mutation({
       room: args.room,
       player1: args.player1,
       state: [args.initialState],
+      chat: [],
       createdAt: args.createdAt,
       public: false,
       game: "quoridor",
