@@ -4,12 +4,15 @@ import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
+import { Doc } from "@/convex/_generated/dataModel";
 interface ChatBoxProps {
   room: string;
-  playerId: Id<"users">; // user ID to tag messages
+  playerId: Id<"users">;
+  user: Doc<"users">;
 }
 
-export default function ChatBox({ room, playerId }: ChatBoxProps) {
+export default function ChatBox({ room, playerId, user }: ChatBoxProps) {
+
   const chat = useQuery(api.games.getGameChat, { room });
   const addChat = useMutation(api.games.addGameChat);
 
@@ -21,6 +24,7 @@ export default function ChatBox({ room, playerId }: ChatBoxProps) {
     await addChat({
       room,
       player: playerId,
+      name: user.name!,
       message: input,
     });
 
@@ -45,7 +49,7 @@ export default function ChatBox({ room, playerId }: ChatBoxProps) {
                 className="bg-gray-100 text-black px-3 py-2 rounded-lg w-fit max-w-full break-words"
               >
                 <strong>
-                  {entry.player === playerId ? "You" : entry.player}:
+                  {entry.name}:
                 </strong>{" "}
                 {entry.message}
               </div>

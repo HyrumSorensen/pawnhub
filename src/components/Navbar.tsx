@@ -9,10 +9,20 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { User } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuthActions } from "@convex-dev/auth/react";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { signOut } = useAuthActions();
+
+  const userId = useQuery(api.users.getCurrentUserId);
+  const user = useQuery(
+    api.users.getUserById,
+    userId ? { userId } : "skip"
+  );
+
 
   return (
     <nav className="border-b bg-background">
@@ -78,8 +88,12 @@ export default function Navbar() {
                   <User className="h-4 w-4" />
                 </AvatarFallback>
               </Avatar>
+              <span className="text-sm text-muted-foreground">
+                {user?.name ?? ""}
+              </span>
             </div>
           </Authenticated>
+
 
           <button
             className="md:hidden"

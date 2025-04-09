@@ -25,6 +25,10 @@ export default function HomePage() {
   const initializeGame = useMutation(api.gameSaves.initializeGame);
   const appendGameState = useMutation(api.gameSaves.appendGameState);
   const userId = useQuery(api.users.getCurrentUserId);
+  const user = useQuery(
+    api.users.getUserById,
+    userId ? { userId } : "skip"
+  );
 
   const [engine, setEngine] = useState<QuoridorGameEngine | null>(null);
   const [board, setBoard] = useState<string[][]>([]);
@@ -445,7 +449,7 @@ export default function HomePage() {
           </div>
         </>
       )}
-      <ChatBox room={roomId} playerId={userId!}/>
+      <ChatBox room={roomId} playerId={userId!} user={user!}/>
       </div>
     </main>
   );
