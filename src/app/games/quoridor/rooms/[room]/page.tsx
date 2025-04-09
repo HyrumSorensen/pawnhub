@@ -12,6 +12,7 @@ import TilePlayer1 from "../../assets/TilePlayer1";
 import TilePlayer2 from "../../assets/TilePlayer2";
 import { useParams } from "next/navigation";
 import { Id } from "@/convex/_generated/dataModel";
+import ChatBox from "../../components/ChatBox"
 
 export default function HomePage() {
   const params = useParams();
@@ -188,20 +189,34 @@ export default function HomePage() {
 
   return (
     <main className="flex flex-col gap-4 p-4 items-center">
+      <div className="flex flex-row gap-4">
       {engine && (
         <>
-          <div className="mb-4 flex gap-4">
-            <button
-              onClick={() =>
-                setMode((prev) => (prev === "move" ? "place-wall" : "move"))
-              }
-              className={`px-4 py-2 rounded ${
-                mode === "place-wall" ? "bg-blue-600 text-white" : "bg-gray-200"
-              }`}
-            >
-              {mode === "move" ? "Switch to Place Wall" : "Switch to Move Mode"}
-            </button>
-          </div>
+      <div className="flex flex-col gap-4">
+        {/* Top row of buttons (like toggle wall/move) */}
+        <div className="flex flex-row gap-2">
+        {mode === "move" ? (
+          <button
+            onClick={() => setMode("place-wall")}
+            className="w-36 px-4 py-2 rounded text-sm font-medium shadow bg-gray-200 hover:bg-gray-300"
+          >
+            Place Wall Mode
+          </button>
+        ) : (
+          <button
+            onClick={() => setMode("move")}
+            className="w-36 px-4 py-2 rounded text-sm font-medium shadow bg-blue-600 text-white"
+          >
+            Move Mode
+          </button>
+        )}
+
+          {/* You can add more buttons here */}
+        </div>
+
+        {/* Other UI elements can go below */}
+        {/* <div>More UI</div> */}
+      </div>
 
           {/* Board */}
           <div
@@ -430,6 +445,8 @@ export default function HomePage() {
           </div>
         </>
       )}
+      <ChatBox />
+      </div>
     </main>
   );
 }
