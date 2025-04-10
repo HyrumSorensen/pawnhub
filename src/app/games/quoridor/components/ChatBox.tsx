@@ -5,7 +5,7 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { Doc } from "@/convex/_generated/dataModel";
-import EmojiPicker from "emoji-picker-react";
+import EmojiPicker, { EmojiClickData } from "emoji-picker-react";
 import { Smile, ChevronDown, ChevronUp } from "lucide-react";
 
 interface ChatBoxProps {
@@ -65,7 +65,7 @@ export default function ChatBox({ room, playerId, user }: ChatBoxProps) {
     setShowEmojiPicker(false);
   };
 
-  const handleEmojiClick = (emojiData: any) => {
+  const handleEmojiClick = (emojiData: EmojiClickData) => {
     setInput((prev) => prev + emojiData.emoji);
     setShowEmojiPicker(false);
   };
@@ -119,7 +119,11 @@ export default function ChatBox({ room, playerId, user }: ChatBoxProps) {
               ref={emojiPickerRef}
               className="absolute bottom-16 left-2 z-20 bg-white rounded shadow-lg border border-gray-200"
             >
-              <EmojiPicker onEmojiClick={handleEmojiClick} height={350} width={300} />
+              <EmojiPicker
+                onEmojiClick={handleEmojiClick}
+                height={350}
+                width={300}
+              />
             </div>
           )}
 
