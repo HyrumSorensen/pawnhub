@@ -239,15 +239,7 @@ export default function HomePage() {
                 {/* You can add more buttons here */}
               </div>
 
-              {/* Current player indicator */}
-              <div className="flex items-center gap-2 text-lg font-semibold mb-2">
-                <div
-                  className={`w-4 h-4 rounded-full ${engine?.getState().currentPlayer === 1 ? "bg-red-500" : "bg-blue-600"}`}
-                ></div>
-                <span>
-                  Current Turn: Player {engine?.getState().currentPlayer}
-                </span>
-              </div>
+              {/* Other UI elements can go below right here */}
 
               {/* Wall count display */}
               <div className="flex flex-col gap-2 text-sm text-gray-800">

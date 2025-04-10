@@ -99,16 +99,15 @@ export class QuoridorGameEngine {
   public placeWall(playerId: PlayerId, wall: Wall): boolean {
     if (this.state.gameOver) return false;
     if (this.state.currentPlayer !== playerId) return false;
-
+  
     const player = this.state.players[playerId];
     if (player.wallsRemaining <= 0) return false;
-
-    const wallLength = wall.length ?? 2; // Default to 2 if undefined
-
-    // Check bounds based on orientation and length
+  
+    const wallLength = wall.length ?? 2;
+  
     const boardLimit = this.state.boardSize;
     if (wall.row < 0 || wall.col < 0) return false;
-
+  
     if (wall.orientation === "horizontal") {
       if (wall.col + wallLength > boardLimit || wall.row >= boardLimit - 1)
         return false;
@@ -116,41 +115,78 @@ export class QuoridorGameEngine {
       if (wall.row + wallLength > boardLimit || wall.col >= boardLimit - 1)
         return false;
     }
-
-    // Check for wall overlap across all spanned tiles
+  
+    // ✅ Check for overlapping walls of the same orientation
     const isOverlap = this.state.walls.some((w) => {
       const wLength = w.length ?? 2;
       if (w.orientation !== wall.orientation) return false;
-
+  
       for (let i = 0; i < wLength; i++) {
         const wRow = w.orientation === "vertical" ? w.row + i : w.row;
         const wCol = w.orientation === "horizontal" ? w.col + i : w.col;
-
+  
         for (let j = 0; j < wallLength; j++) {
           const newRow =
             wall.orientation === "vertical" ? wall.row + j : wall.row;
           const newCol =
             wall.orientation === "horizontal" ? wall.col + j : wall.col;
-
+  
           if (wRow === newRow && wCol === newCol) return true;
         }
       }
-
+  
       return false;
     });
-
+  
     if (isOverlap) return false;
-
+  
+    // ✅ Check for crossing walls of opposite orientation
+    const isCrossing = this.state.walls.some((w) => {
+      const wLength = w.length ?? 2;
+  
+      // Horizontal wall trying to cross vertical wall
+      if (wall.orientation === "horizontal" && w.orientation === "vertical") {
+        // Crossing happens at (wall.row, wall.col + 1)
+        const crossRow = wall.row;
+        const crossCol = wall.col;
+  
+        for (let i = 0; i < wLength; i++) {
+          const wRow = w.row + i;
+          const wCol = w.col;
+          if (wRow === crossRow && wCol === crossCol) return true;
+        }
+      }
+  
+      // Vertical wall trying to cross horizontal wall
+      if (wall.orientation === "vertical" && w.orientation === "horizontal") {
+        // Crossing happens at (wall.row + 1, wall.col)
+        const crossRow = wall.row;
+        const crossCol = wall.col;
+  
+        for (let i = 0; i < wLength; i++) {
+          const wRow = w.row;
+          const wCol = w.col + i;
+          if (wRow === crossRow && wCol === crossCol) return true;
+        }
+      }
+  
+      return false;
+    });
+  
+    if (isCrossing) return false;
+  
+    // ✅ Check if wall blocks all paths
     if (!this.isWallPlacementValid({ ...wall, length: wallLength }))
       return false;
-
-    // Place the wall
+  
+    // ✅ Place the wall
     this.state.walls.push({ ...wall, length: wallLength });
     this.state.players[playerId].wallsRemaining -= 1;
-
+  
     this.switchTurn();
     return true;
   }
+  
 
   // Check for valid wall placement *********************************
   private isWallPlacementValid(wall: Wall): boolean {
