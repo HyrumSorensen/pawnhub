@@ -96,6 +96,27 @@ export const getGameState = query({
   },
 });
 
+export const getGame = query({
+  args: {
+    room: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const existingGame = await ctx.db
+      .query("games")
+      .filter((q) => q.eq(q.field("room"), args.room))
+      .first();
+
+    if (!existingGame) {
+      return null;
+    }
+
+    return {
+      player1: existingGame.player1,
+      player2: existingGame.player2,
+    };
+  },
+});
+
 export const setGameCompleted = mutation({
   args: {
     room: v.string(),

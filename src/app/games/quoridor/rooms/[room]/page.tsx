@@ -22,6 +22,7 @@ export default function HomePage() {
   const joinGame = useMutation(api.games.joinGame);
   const updateGameState = useMutation(api.games.updateGameState);
   const getGameState = useQuery(api.games.getGameState, { room: roomId });
+  const getGame = useQuery(api.games.getGame, { room: roomId });
   const setGameCompleted = useMutation(api.games.setGameCompleted);
   const initializeGame = useMutation(api.gameSaves.initializeGame);
   const appendGameState = useMutation(api.gameSaves.appendGameState);
@@ -139,9 +140,18 @@ export default function HomePage() {
   }
 
   function handlePlayerMove(r: number, c: number) {
-    if (!engine || mode !== "move") return;
+    if (!engine || mode !== "move" || !userId || !getGameState || !getGame)
+      return;
 
-    const currentPlayer = engine.getState().currentPlayer;
+    const currentState = engine.getState();
+    const currentPlayer = currentState.currentPlayer;
+    const isCurrentPlayer =
+      (currentPlayer === 1 && userId === getGame.player1) ||
+      (currentPlayer === 2 && userId === getGame.player2);
+
+    if (!isCurrentPlayer) {
+      return;
+    }
 
     if (
       firstSelectedCell[0] === -1 &&
@@ -170,9 +180,22 @@ export default function HomePage() {
     orientation: "horizontal" | "vertical",
     length: number = 2
   ) {
-    if (!engine) return;
+    if (!engine || !userId || !getGameState || !getGame) return;
 
-    const success = engine.placeWall(engine.getState().currentPlayer, {
+    const currentState = engine.getState();
+    const currentPlayer = currentState.currentPlayer;
+
+    // Check if the current user is the current player
+    const isCurrentPlayer =
+      (currentPlayer === 1 && userId === getGame.player1) ||
+      (currentPlayer === 2 && userId === getGame.player2);
+
+    if (!isCurrentPlayer) {
+      console.warn("Not your turn!");
+      return;
+    }
+
+    const success = engine.placeWall(currentPlayer, {
       row,
       col,
       orientation,
