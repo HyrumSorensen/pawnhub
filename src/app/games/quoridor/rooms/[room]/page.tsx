@@ -12,7 +12,9 @@ import TilePlayer1 from "../../assets/TilePlayer1";
 import TilePlayer2 from "../../assets/TilePlayer2";
 import { useParams } from "next/navigation";
 import { Id } from "@/convex/_generated/dataModel";
-import ChatBox from "../../components/ChatBox"
+import ChatBox from "../../components/ChatBox";
+import QuoridorTutorial from "../../components/QuoridorTutorial";
+
 
 export default function HomePage() {
   const params = useParams();
@@ -218,8 +220,23 @@ export default function HomePage() {
           {/* You can add more buttons here */}
         </div>
 
-        {/* Other UI elements can go below */}
-        {/* <div>More UI</div> */}
+        {/* Other UI elements can go below right here */}
+
+        {/* Wall count display */}
+        <div className="flex flex-col gap-2 text-sm text-gray-800">
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded-full bg-red-500"></div>
+            <span>Player 1 Walls Left: {engine?.getState().players[1].wallsRemaining}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded-full bg-blue-600"></div>
+            <span>Player 2 Walls Left: {engine?.getState().players[2].wallsRemaining}</span>
+          </div>
+        </div>
+
+
+        {/* End other ui elements */}
+
       </div>
 
           {/* Board */}
@@ -336,13 +353,20 @@ export default function HomePage() {
                 return (
                   <div
                     key={`${rowIdx}-${colIdx}`}
-                    className={`transition-colors duration-100 ${
-                      wallExists
-                        ? "bg-red-500"
+                    style={{
+                      backgroundImage: wallExists
+                        ? 'url("/assets/wall.svg")'
                         : isHovered
-                          ? "bg-gray-400"
-                          : "bg-transparent"
-                    }`}
+                          ? 'linear-gradient(gray, gray)' // fallback gray on hover
+                          : 'none',
+                      backgroundSize: "cover",
+                      backgroundRepeat: "no-repeat",
+                      transition: "background 0.1s",
+                    }}
+                    
+                    
+                    
+                    
                     onMouseMove={(e) => {
                       if (mode === "place-wall") {
                         const target = e.target as HTMLDivElement;
@@ -450,6 +474,7 @@ export default function HomePage() {
         </>
       )}
       <ChatBox room={roomId} playerId={userId!} user={user!}/>
+      <QuoridorTutorial />
       </div>
     </main>
   );
