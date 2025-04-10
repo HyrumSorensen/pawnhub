@@ -156,6 +156,7 @@ export const addGameChat = mutation({
     room: v.string(),
     player: v.id("users"),
     name: v.string(),
+    avatarUrl: v.optional(v.string()),
     message: v.string(),
   },
   handler: async (ctx, args) => {
@@ -172,6 +173,7 @@ export const addGameChat = mutation({
       player: args.player,
       message: args.message,
       name: args.name,
+      avatarUrl: args.avatarUrl ?? "",
       createdAt: Date.now(),
     });
 

@@ -6,7 +6,9 @@ import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { Doc } from "@/convex/_generated/dataModel";
 import EmojiPicker, { EmojiClickData } from "emoji-picker-react";
-import { Smile, ChevronDown, ChevronUp } from "lucide-react";
+import { Smile, ChevronDown, ChevronUp, User } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface ChatBoxProps {
   room: string;
@@ -58,6 +60,7 @@ export default function ChatBox({ room, playerId, user }: ChatBoxProps) {
       room,
       player: playerId,
       name: user.name!,
+      avatarUrl: user.avatarUrl!,
       message: input,
     });
 
@@ -72,7 +75,7 @@ export default function ChatBox({ room, playerId, user }: ChatBoxProps) {
 
   return (
     <div
-      className={`flex flex-col w-80 bg-white border border-gray-300 rounded-xl shadow-lg overflow-hidden relative transition-all duration-300 ${
+      className={`flex flex-col w-80 bg-white border border-gray-300 rounded-xl shadow-sm overflow-hidden relative transition-all duration-300 ${
         collapsed ? "h-[44px]" : "h-[500px]"
       }`}
     >
@@ -93,16 +96,47 @@ export default function ChatBox({ room, playerId, user }: ChatBoxProps) {
       {!collapsed && (
         <>
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto space-y-2 p-3 bg-white">
+          <div className="flex-1 overflow-y-auto space-y-4 p-3 bg-white">
             {chat?.map((entryStr, i) => {
               try {
                 const entry = JSON.parse(entryStr);
+                const isCurrentUser = entry.player === playerId;
+                const timestamp = new Date(entry.createdAt);
+
                 return (
                   <div
                     key={i}
-                    className="bg-gray-100 text-black px-3 py-2 rounded-lg w-fit max-w-full break-words"
+                    className={`flex gap-2 ${isCurrentUser ? "flex-row-reverse" : "flex-row"}`}
                   >
-                    <strong>{entry.name}:</strong> {entry.message}
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={entry.avatarUrl} />
+                      <AvatarFallback>
+                        <User className="h-4 w-4" />
+                      </AvatarFallback>
+                    </Avatar>
+                    <div
+                      className={`flex flex-col ${isCurrentUser ? "items-end" : "items-start"}`}
+                    >
+                      <div
+                        className={`flex items-center gap-2 ${isCurrentUser ? "flex-row-reverse" : "flex-row"}`}
+                      >
+                        <span className="font-semibold text-sm">
+                          {entry.name}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          {formatDistanceToNow(timestamp, { addSuffix: true })}
+                        </span>
+                      </div>
+                      <div
+                        className={`px-3 py-2 rounded-lg max-w-[200px] break-words ${
+                          isCurrentUser
+                            ? "bg-green-100 text-black"
+                            : "bg-blue-100 text-black"
+                        }`}
+                      >
+                        {entry.message}
+                      </div>
+                    </div>
                   </div>
                 );
               } catch (e) {
@@ -117,7 +151,7 @@ export default function ChatBox({ room, playerId, user }: ChatBoxProps) {
           {showEmojiPicker && (
             <div
               ref={emojiPickerRef}
-              className="absolute bottom-16 left-2 z-20 bg-white rounded shadow-lg border border-gray-200"
+              className="absolute bottom-16 left-2 z-20 bg-white rounded shadow-lg"
             >
               <EmojiPicker
                 onEmojiClick={handleEmojiClick}

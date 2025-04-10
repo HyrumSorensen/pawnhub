@@ -1,5 +1,5 @@
 // convex/users.ts
-import { query } from "./_generated/server";
+import { query, mutation } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
 
@@ -21,5 +21,28 @@ export const getUserById = query({
       .first();
 
     return user;
+  },
+});
+
+export const updateUserProfile = mutation({
+  args: {
+    userId: v.string(),
+    name: v.optional(v.string()),
+    avatarUrl: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .filter((q) => q.eq(q.field("_id"), args.userId))
+      .first();
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    await ctx.db.patch(user._id, {
+      name: args.name ?? user.name,
+      avatarUrl: args.avatarUrl ?? user.avatarUrl,
+    });
   },
 });
