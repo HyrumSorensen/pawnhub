@@ -1,7 +1,7 @@
 // QuoridorGameEngine.ts
 import { eventBus } from "./QuoridorEventSingleton";
 
-export type PlayerId = 1 | 2;
+export type PlayerId = number;
 
 export type Direction = "up" | "down" | "left" | "right";
 
@@ -22,12 +22,11 @@ export interface Wall {
 export interface GameState {
   currentPlayer: PlayerId;
   currentValidMoves: Position[];
-  players: {
-    [key in PlayerId]: {
-      position: Position;
-      wallsRemaining: number;
-    };
-  };
+  players: Record<PlayerId, {
+    position: Position;
+    wallsRemaining: number;
+  }>;
+  
   walls: Wall[];
   boardSize: number; // usually 9
   gameOver: boolean;
@@ -36,34 +35,53 @@ export interface GameState {
 
 export class QuoridorGameEngine {
   private state: GameState;
+  private numPlayers: 2 | 4 = 2;
 
-  constructor() {
-    this.state = this.initializeGameState();
+  constructor(numPlayers: 2 | 4 = 2) {
+    this.numPlayers = numPlayers;
+    this.state = this.initializeGameState(numPlayers);
   }
+  
 
   // Initialize board, players, and wall state ******************************************
-  private initializeGameState(): GameState {
+  private initializeGameState(numPlayers: 2 | 4 = 2): GameState {
     const boardSize = 9;
-
+    const mid = Math.floor(boardSize / 2);
+  
+    const players: Record<number, { position: Position; wallsRemaining: number }> = {
+      1: {
+        position: { row: 0, col: mid }, // Top middle
+        wallsRemaining: numPlayers === 2 ? 10 : 5,
+      },
+      2: {
+        position: { row: boardSize - 1, col: mid }, // Bottom middle
+        wallsRemaining: numPlayers === 2 ? 10 : 5,
+      },
+    };
+  
+    if (numPlayers === 4) {
+      players[3] = {
+        position: { row: mid, col: 0 }, // Left middle
+        wallsRemaining: 5,
+      };
+      players[4] = {
+        position: { row: mid, col: boardSize - 1 }, // Right middle
+        wallsRemaining: 5,
+      };
+    }
+  
     return {
       currentPlayer: 1,
       currentValidMoves: [],
-      players: {
-        1: {
-          position: { row: 0, col: Math.floor(boardSize / 2) }, // (0, 4)
-          wallsRemaining: 10,
-        },
-        2: {
-          position: { row: boardSize - 1, col: Math.floor(boardSize / 2) }, // (8, 4)
-          wallsRemaining: 10,
-        },
-      },
-      walls: [], // No walls at start
+      players,
+      walls: [],
       boardSize,
       gameOver: false,
       winner: null,
     };
   }
+  
+  
 
   // Get a deep copy of the current state ******************************************
   public getState(): GameState {
@@ -78,22 +96,26 @@ export class QuoridorGameEngine {
   public movePawnTo(playerId: PlayerId, dest: Position): boolean {
     if (this.state.gameOver || this.state.currentPlayer !== playerId)
       return false;
-
+  
+    if (!this.state.players[playerId]) return false; // ✅ sanity check
+  
     const valid = this.state.currentValidMoves.some(
       (pos) => pos.row === dest.row && pos.col === dest.col
     );
     if (!valid) return false;
-
+  
     // Move
     this.state.players[playerId].position = { ...dest };
-
-    this.checkVictory();
+  
+    this.checkVictory(); // 🔜 we'll update this to support all 4
     if (!this.state.gameOver) this.switchTurn();
+  
     this.clearCurrentValidMoves();
-
+  
     eventBus.emit("gameStateUpdated", this.getState());
     return true;
   }
+  
 
   // Attempt to place a wall ******************************************
   public placeWall(playerId: PlayerId, wall: Wall): boolean {
@@ -208,32 +230,49 @@ export class QuoridorGameEngine {
     const originalWalls = [...this.state.walls];
     this.state.walls.push(...simulatedWallSegments);
 
-    const p1CanReach = this.canPlayerReachGoal(1);
-    const p2CanReach = this.canPlayerReachGoal(2);
+    const allPlayersCanReach = Object.keys(this.state.players).every((id) =>
+      this.canPlayerReachGoal(parseInt(id))
+    );
+    
 
     // Restore the original wall state
     this.state.walls = originalWalls;
 
-    return p1CanReach && p2CanReach;
+    return allPlayersCanReach;
   }
 
   private canPlayerReachGoal(playerId: PlayerId): boolean {
-    const start = this.state.players[playerId].position;
+    const start = this.state.players[playerId]?.position;
+    if (!start) return false;
+  
     const visited = new Set<string>();
     const queue: Position[] = [start];
-
-    const goalRow = playerId === 1 ? this.state.boardSize - 1 : 0;
-
+    const boardSize = this.state.boardSize;
+  
+    const isGoal = (pos: Position): boolean => {
+      switch (playerId) {
+        case 1:
+          return pos.row === boardSize - 1;
+        case 2:
+          return pos.row === 0;
+        case 3:
+          return pos.col === boardSize - 1;
+        case 4:
+          return pos.col === 0;
+        default:
+          return false;
+      }
+    };
+  
     while (queue.length > 0) {
       const current = queue.shift()!;
       const key = `${current.row},${current.col}`;
       if (visited.has(key)) continue;
-
+  
       visited.add(key);
-
-      if (playerId === 1 && current.row === goalRow) return true;
-      if (playerId === 2 && current.row === goalRow) return true;
-
+  
+      if (isGoal(current)) return true;
+  
       const neighbors = this.getValidNeighbors(current);
       for (const neighbor of neighbors) {
         const nKey = `${neighbor.row},${neighbor.col}`;
@@ -242,9 +281,10 @@ export class QuoridorGameEngine {
         }
       }
     }
-
+  
     return false; // No path to goal
   }
+  
 
   private isInBounds(pos: Position): boolean {
     return (
@@ -328,64 +368,86 @@ export class QuoridorGameEngine {
   private getValidNeighbors(pos: Position): Position[] {
     const directions: Direction[] = ["up", "down", "left", "right"];
     const neighbors: Position[] = [];
-
-    const otherPlayerId: PlayerId = this.state.currentPlayer === 1 ? 2 : 1;
-    const otherPos = this.state.players[otherPlayerId].position;
-
+  
+    const allOpponentPositions = Object.entries(this.state.players)
+      .filter(([id]) => parseInt(id) !== this.state.currentPlayer)
+      .map(([, data]) => data.position);
+  
     for (const dir of directions) {
       const deltaRow = dir === "up" ? -1 : dir === "down" ? 1 : 0;
       const deltaCol = dir === "left" ? -1 : dir === "right" ? 1 : 0;
-
+  
       const intermediate: Position = {
         row: pos.row + deltaRow,
         col: pos.col + deltaCol,
       };
-
+  
       // Skip if wall blocks path to intermediate square
       if (!this.canMove(pos, intermediate)) continue;
-
-      const isBlockedByOpponent =
-        intermediate.row === otherPos.row && intermediate.col === otherPos.col;
-
-      if (!isBlockedByOpponent) {
+  
+      const occupyingOpponents = allOpponentPositions.filter(
+        (p) => p.row === intermediate.row && p.col === intermediate.col
+      );
+  
+      if (occupyingOpponents.length === 0) {
         neighbors.push(intermediate);
         continue;
       }
-
-      // Jump logic: try to hop over
-      const jump: Position = {
-        row: intermediate.row + deltaRow,
-        col: intermediate.col + deltaCol,
-      };
-
-      if (this.isInBounds(jump) && this.canMove(intermediate, jump)) {
-        neighbors.push(jump); // Successful jump over opponent
-      } else {
-        // Can't jump — check sidesteps (diagonals)
+  
+      // If there's more than one opponent in the direction — can't jump
+      if (occupyingOpponents.length > 1) {
+        // Only sidestep
         const sideDirs: Direction[] =
           dir === "up" || dir === "down" ? ["left", "right"] : ["up", "down"];
-
+  
         for (const side of sideDirs) {
           const sideDeltaRow = side === "up" ? -1 : side === "down" ? 1 : 0;
           const sideDeltaCol = side === "left" ? -1 : side === "right" ? 1 : 0;
-
+  
           const sideStep: Position = {
             row: intermediate.row + sideDeltaRow,
             col: intermediate.col + sideDeltaCol,
           };
-
-          if (
-            this.isInBounds(sideStep) &&
-            this.canMove(intermediate, sideStep)
-          ) {
+  
+          if (this.isInBounds(sideStep) && this.canMove(intermediate, sideStep)) {
+            neighbors.push(sideStep);
+          }
+        }
+        continue;
+      }
+  
+      // Only 1 opponent in that direction — try jumping over
+      const jump: Position = {
+        row: intermediate.row + deltaRow,
+        col: intermediate.col + deltaCol,
+      };
+  
+      if (this.isInBounds(jump) && this.canMove(intermediate, jump)) {
+        neighbors.push(jump);
+      } else {
+        // Can't jump — try sidesteps
+        const sideDirs: Direction[] =
+          dir === "up" || dir === "down" ? ["left", "right"] : ["up", "down"];
+  
+        for (const side of sideDirs) {
+          const sideDeltaRow = side === "up" ? -1 : side === "down" ? 1 : 0;
+          const sideDeltaCol = side === "left" ? -1 : side === "right" ? 1 : 0;
+  
+          const sideStep: Position = {
+            row: intermediate.row + sideDeltaRow,
+            col: intermediate.col + sideDeltaCol,
+          };
+  
+          if (this.isInBounds(sideStep) && this.canMove(intermediate, sideStep)) {
             neighbors.push(sideStep);
           }
         }
       }
     }
-
+  
     return neighbors;
   }
+  
 
   //   // Get list of valid moves for a player
   public getValidMoves(): boolean {
@@ -406,23 +468,50 @@ export class QuoridorGameEngine {
 
   // Switch turn to the other player ******************************************
   private switchTurn(): void {
-    this.state.currentPlayer = this.state.currentPlayer === 1 ? 2 : 1;
+    const playerIds = Object.keys(this.state.players)
+      .map((id) => parseInt(id))
+      .sort((a, b) => a - b);
+  
+    const currentIndex = playerIds.indexOf(this.state.currentPlayer);
+    const nextIndex = (currentIndex + 1) % playerIds.length;
+  
+    this.state.currentPlayer = playerIds[nextIndex];
   }
+  
 
   // Check if a player has reached their goal line ******************************************
   private checkVictory(): void {
     const boardSize = this.state.boardSize;
-    const p1Row = this.state.players[1].position.row;
-    const p2Row = this.state.players[2].position.row;
-
-    if (p1Row === boardSize - 1) {
-      this.state.gameOver = true;
-      this.state.winner = 1;
-    } else if (p2Row === 0) {
-      this.state.gameOver = true;
-      this.state.winner = 2;
+  
+    for (const playerId in this.state.players) {
+      const id = parseInt(playerId) as PlayerId;
+      const pos = this.state.players[id].position;
+  
+      let hasWon = false;
+  
+      switch (id) {
+        case 1:
+          hasWon = pos.row === boardSize - 1;
+          break;
+        case 2:
+          hasWon = pos.row === 0;
+          break;
+        case 3:
+          hasWon = pos.col === boardSize - 1;
+          break;
+        case 4:
+          hasWon = pos.col === 0;
+          break;
+      }
+  
+      if (hasWon) {
+        this.state.gameOver = true;
+        this.state.winner = id;
+        break;
+      }
     }
   }
+  
 
   // Serialize game state (for saving/transmitting)
   public serializeState(): string {
@@ -436,6 +525,6 @@ export class QuoridorGameEngine {
 
   // Reset the game to start over ******************************************
   public resetGame(): void {
-    this.state = this.initializeGameState();
+    this.state = this.initializeGameState(this.numPlayers);
   }
 }
