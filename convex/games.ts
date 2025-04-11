@@ -40,37 +40,67 @@ export const joinGame = mutation({
     player: v.id("users"),
   },
   handler: async (ctx, args) => {
-    const game = await ctx.db
+    const existingGame = await ctx.db
       .query("games")
       .filter((q) => q.eq(q.field("room"), args.room))
       .first();
 
-    if (!game) {
+    if (!existingGame) {
       return { error: "Game not found" };
     }
 
-    // Prevent duplicate join
-    if (
-      game.player1 === args.player ||
-      game.player2 === args.player ||
-      game.player3 === args.player ||
-      game.player4 === args.player
-    ) {
+    const alreadyJoined = [
+      existingGame.player1,
+      existingGame.player2,
+      existingGame.player3,
+      existingGame.player4,
+    ].includes(args.player);
+
+    if (alreadyJoined) {
       return { error: "Player already in game" };
     }
 
-    // Find the next available player slot
-    if (!game.player2) {
-      await ctx.db.patch(game._id, { player2: args.player });
-    } else if (!game.player3) {
-      await ctx.db.patch(game._id, { player3: args.player });
-    } else if (!game.player4) {
-      await ctx.db.patch(game._id, { player4: args.player });
-    } else {
-      return { error: "Game is full" };
-    }
+    // Assign to next available slot
+    let playerKey: "player2" | "player3" | "player4" | null = null;
+    if (!existingGame.player2) playerKey = "player2";
+    else if (!existingGame.player3) playerKey = "player3";
+    else if (!existingGame.player4) playerKey = "player4";
+    else return { error: "Room is full" };
+
+    const updatedFields: Record<string, any> = {
+      [playerKey]: args.player,
+    };
+
+    // Update the game state to include the new player
+    const latestState = existingGame.state[existingGame.state.length - 1];
+    const parsedState = JSON.parse(latestState);
+
+    const boardSize = parsedState.boardSize;
+    const mid = Math.floor(boardSize / 2);
+
+    // Define new player position and walls
+    const newPlayerId = playerKey === "player3" ? 3 : 4;
+    const newPlayer = {
+      position: playerKey === "player3"
+        ? { row: mid, col: 0 } // Left middle
+        : { row: mid, col: boardSize - 1 }, // Right middle
+      wallsRemaining: 5,
+    };
+
+    parsedState.players[newPlayerId] = newPlayer;
+
+    // Append updated state
+    const updatedStateArray = [
+      ...existingGame.state,
+      JSON.stringify(parsedState),
+    ];
+
+    updatedFields.state = updatedStateArray;
+
+    await ctx.db.patch(existingGame._id, updatedFields);
   },
 });
+
 
 export const updateGameState = mutation({
   args: {

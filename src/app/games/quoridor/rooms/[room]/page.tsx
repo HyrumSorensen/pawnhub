@@ -122,7 +122,7 @@ export default function HomePage() {
     return () => {
       eventBus.off("gameStateUpdated", handler);
     };
-  }, [userId, initializeGame, createGame, roomId, joinGame]);
+  }, [userId, initializeGame, createGame, roomId, joinGame, getGame]);
 
   async function saveCurrentGameState() {
     if (!engine || !gameId) return;
