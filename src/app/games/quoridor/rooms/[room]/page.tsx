@@ -10,6 +10,8 @@ import Tile from "../../assets/Tile";
 import TileValid from "../../assets/TileValid";
 import TilePlayer1 from "../../assets/TilePlayer1";
 import TilePlayer2 from "../../assets/TilePlayer2";
+import TilePlayer3 from "../../assets/TilePlayer3";
+import TilePlayer4 from "../../assets/TilePlayer4";
 import { useParams } from "next/navigation";
 import { Id } from "@/convex/_generated/dataModel";
 import ChatBox from "../../components/ChatBox";
@@ -26,6 +28,7 @@ export default function HomePage() {
   const setGameCompleted = useMutation(api.games.setGameCompleted);
   const initializeGame = useMutation(api.gameSaves.initializeGame);
   const appendGameState = useMutation(api.gameSaves.appendGameState);
+  const closeGame = useMutation(api.games.closeGame);
   const userId = useQuery(api.users.getCurrentUserId);
   const user = useQuery(api.users.getUserById, userId ? { userId } : "skip");
 
@@ -130,6 +133,37 @@ export default function HomePage() {
     });
   }
 
+  async function maybeCloseGame() {
+    if (!getGame || !getGame.open) return;
+  
+    const players = [
+      getGame.player1,
+      getGame.player2,
+      getGame.player3,
+      getGame.player4,
+    ].filter(Boolean);
+  
+    const numPlayers = players.length;
+  
+    // If 4 players joined, lock the game
+    if (numPlayers === 4) {
+      await closeGame({ room: roomId });
+      return;
+    }
+  
+    // If 2 players and someone has made a move, lock it
+    const gameState = engine?.getState();
+    if (
+      numPlayers === 2 &&
+      gameState &&
+      (gameState.players[1].position.row !== 0 ||
+        gameState.players[2].position.row !== gameState.boardSize - 1)
+    ) {
+      await closeGame({ room: roomId });
+    }
+  }
+  
+
   async function updateCurrentGameState() {
     if (!engine || !gameId) return;
 
@@ -146,9 +180,11 @@ export default function HomePage() {
     const currentState = engine.getState();
     const currentPlayer = currentState.currentPlayer;
     const isCurrentPlayer =
-      (currentPlayer === 1 && userId === getGame.player1) ||
-      (currentPlayer === 2 && userId === getGame.player2);
-
+    (currentPlayer === 1 && userId === getGame.player1) ||
+    (currentPlayer === 2 && userId === getGame.player2) ||
+    (currentPlayer === 3 && userId === getGame.player3) ||
+    (currentPlayer === 4 && userId === getGame.player4);
+  
     if (!isCurrentPlayer) {
       return;
     }
@@ -187,8 +223,11 @@ export default function HomePage() {
 
     // Check if the current user is the current player
     const isCurrentPlayer =
-      (currentPlayer === 1 && userId === getGame.player1) ||
-      (currentPlayer === 2 && userId === getGame.player2);
+    (currentPlayer === 1 && userId === getGame.player1) ||
+    (currentPlayer === 2 && userId === getGame.player2) ||
+    (currentPlayer === 3 && userId === getGame.player3) ||
+    (currentPlayer === 4 && userId === getGame.player4);
+  
 
     if (!isCurrentPlayer) {
       console.warn("Not your turn!");
@@ -258,6 +297,24 @@ export default function HomePage() {
                   </span>
                 </div>
               </div>
+              {engine?.getState().players[3] && (
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded-full bg-green-600"></div>
+                  <span>
+                    Player 3 Walls Left: {engine.getState().players[3].wallsRemaining}
+                  </span>
+                </div>
+              )}
+
+              {engine?.getState().players[4] && (
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded-full bg-yellow-500"></div>
+                  <span>
+                    Player 4 Walls Left: {engine.getState().players[4].wallsRemaining}
+                  </span>
+                </div>
+              )}
+
 
               {/* End other ui elements */}
             </div>
@@ -296,6 +353,12 @@ export default function HomePage() {
                         )}
                         {cell === "2" && (
                           <TilePlayer2 width={tileSize} height={tileSize} />
+                        )}
+                        {cell === "3" && (
+                          <TilePlayer3 width={tileSize} height={tileSize} />
+                        )}
+                        {cell === "4" && (
+                          <TilePlayer4 width={tileSize} height={tileSize} />
                         )}
                         {cell === "X" && (
                           <TileValid width={tileSize} height={tileSize} />
@@ -526,10 +589,10 @@ function renderBoard(engine: QuoridorGameEngine): string[][] {
   }
 
   // Place players (always on top)
-  const p1 = state.players[1].position;
-  const p2 = state.players[2].position;
-  board[p1.row][p1.col] = "1";
-  board[p2.row][p2.col] = "2";
+  Object.entries(state.players).forEach(([playerId, data]) => {
+    board[data.position.row][data.position.col] = playerId;
+  });
+  
 
   return board;
 }

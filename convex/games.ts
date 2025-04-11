@@ -29,6 +29,7 @@ export const createGame = mutation({
       public: false,
       game: "quoridor",
       completed: false,
+      open: true,
     });
   },
 });
@@ -39,25 +40,35 @@ export const joinGame = mutation({
     player: v.id("users"),
   },
   handler: async (ctx, args) => {
-    const existingGame = await ctx.db
+    const game = await ctx.db
       .query("games")
       .filter((q) => q.eq(q.field("room"), args.room))
       .first();
 
-    if (!existingGame) {
+    if (!game) {
       return { error: "Game not found" };
     }
 
+    // Prevent duplicate join
     if (
-      existingGame.player1 === args.player ||
-      existingGame.player2 === args.player
+      game.player1 === args.player ||
+      game.player2 === args.player ||
+      game.player3 === args.player ||
+      game.player4 === args.player
     ) {
       return { error: "Player already in game" };
     }
 
-    await ctx.db.patch(existingGame._id, {
-      player2: args.player,
-    });
+    // Find the next available player slot
+    if (!game.player2) {
+      await ctx.db.patch(game._id, { player2: args.player });
+    } else if (!game.player3) {
+      await ctx.db.patch(game._id, { player3: args.player });
+    } else if (!game.player4) {
+      await ctx.db.patch(game._id, { player4: args.player });
+    } else {
+      return { error: "Game is full" };
+    }
   },
 });
 
@@ -67,17 +78,17 @@ export const updateGameState = mutation({
     state: v.string(),
   },
   handler: async (ctx, args) => {
-    const existingGame = await ctx.db
+    const game = await ctx.db
       .query("games")
       .filter((q) => q.eq(q.field("room"), args.room))
       .first();
 
-    if (!existingGame) {
+    if (!game) {
       return { error: "Game not found" };
     }
 
-    await ctx.db.patch(existingGame._id, {
-      state: [...existingGame.state, args.state],
+    await ctx.db.patch(game._id, {
+      state: [...game.state, args.state],
     });
   },
 });
@@ -87,12 +98,12 @@ export const getGameState = query({
     room: v.string(),
   },
   handler: async (ctx, args) => {
-    const existingGame = await ctx.db
+    const game = await ctx.db
       .query("games")
       .filter((q) => q.eq(q.field("room"), args.room))
       .first();
 
-    return existingGame?.state;
+    return game?.state;
   },
 });
 
@@ -101,18 +112,21 @@ export const getGame = query({
     room: v.string(),
   },
   handler: async (ctx, args) => {
-    const existingGame = await ctx.db
+    const game = await ctx.db
       .query("games")
       .filter((q) => q.eq(q.field("room"), args.room))
       .first();
 
-    if (!existingGame) {
+    if (!game) {
       return null;
     }
 
     return {
-      player1: existingGame.player1,
-      player2: existingGame.player2,
+      player1: game.player1,
+      player2: game.player2,
+      player3: game.player3,
+      player4: game.player4,
+      open: game.open,
     };
   },
 });
@@ -122,16 +136,16 @@ export const setGameCompleted = mutation({
     room: v.string(),
   },
   handler: async (ctx, args) => {
-    const existingGame = await ctx.db
+    const game = await ctx.db
       .query("games")
       .filter((q) => q.eq(q.field("room"), args.room))
       .first();
 
-    if (!existingGame) {
+    if (!game) {
       return { error: "Game not found" };
     }
 
-    await ctx.db.patch(existingGame._id, {
+    await ctx.db.patch(game._id, {
       completed: true,
     });
   },
@@ -179,6 +193,26 @@ export const addGameChat = mutation({
 
     await ctx.db.patch(game._id, {
       chat: [...game.chat, newChatEntry],
+    });
+  },
+});
+
+export const closeGame = mutation({
+  args: {
+    room: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const game = await ctx.db
+      .query("games")
+      .filter((q) => q.eq(q.field("room"), args.room))
+      .first();
+
+    if (!game) {
+      return { error: "Game not found" };
+    }
+
+    await ctx.db.patch(game._id, {
+      open: false,
     });
   },
 });
