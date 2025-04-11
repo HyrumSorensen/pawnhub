@@ -202,6 +202,7 @@ export default function HomePage() {
         setFirstSelectedCell([-1, -1]);
         saveCurrentGameState();
         updateCurrentGameState();
+        maybeCloseGame();
       } else {
         setFirstSelectedCell([-1, -1]);
         engine.clearCurrentValidMoves();
