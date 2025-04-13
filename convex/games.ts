@@ -49,18 +49,29 @@ export const joinGame = mutation({
       return { error: "Game not found" };
     }
 
+    // Prevent duplicate join
     if (
       existingGame.player1 === args.player ||
-      existingGame.player2 === args.player
+      existingGame.player2 === args.player ||
+      existingGame.player3 === args.player ||
+      existingGame.player4 === args.player
     ) {
       return { error: "Player already in game" };
     }
 
-    await ctx.db.patch(existingGame._id, {
-      player2: args.player,
-    });
+    // Assign player to the first open slot
+    if (!existingGame.player2) {
+      await ctx.db.patch(existingGame._id, { player2: args.player });
+    } else if (!existingGame.player3) {
+      await ctx.db.patch(existingGame._id, { player3: args.player });
+    } else if (!existingGame.player4) {
+      await ctx.db.patch(existingGame._id, { player4: args.player });
+    } else {
+      return { error: "Game is already full" };
+    }
   },
 });
+
 
 
 
