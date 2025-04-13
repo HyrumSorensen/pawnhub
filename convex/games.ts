@@ -49,57 +49,19 @@ export const joinGame = mutation({
       return { error: "Game not found" };
     }
 
-    const alreadyJoined = [
-      existingGame.player1,
-      existingGame.player2,
-      existingGame.player3,
-      existingGame.player4,
-    ].includes(args.player);
-
-    if (alreadyJoined) {
+    if (
+      existingGame.player1 === args.player ||
+      existingGame.player2 === args.player
+    ) {
       return { error: "Player already in game" };
     }
 
-    // Assign to next available slot
-    let playerKey: "player2" | "player3" | "player4" | null = null;
-    if (!existingGame.player2) playerKey = "player2";
-    else if (!existingGame.player3) playerKey = "player3";
-    else if (!existingGame.player4) playerKey = "player4";
-    else return { error: "Room is full" };
-
-    const updatedFields: Record<string, any> = {
-      [playerKey]: args.player,
-    };
-
-    // Update the game state to include the new player
-    const latestState = existingGame.state[existingGame.state.length - 1];
-    const parsedState = JSON.parse(latestState);
-
-    const boardSize = parsedState.boardSize;
-    const mid = Math.floor(boardSize / 2);
-
-    // Define new player position and walls
-    const newPlayerId = playerKey === "player3" ? 3 : 4;
-    const newPlayer = {
-      position: playerKey === "player3"
-        ? { row: mid, col: 0 } // Left middle
-        : { row: mid, col: boardSize - 1 }, // Right middle
-      wallsRemaining: 5,
-    };
-
-    parsedState.players[newPlayerId] = newPlayer;
-
-    // Append updated state
-    const updatedStateArray = [
-      ...existingGame.state,
-      JSON.stringify(parsedState),
-    ];
-
-    updatedFields.state = updatedStateArray;
-
-    await ctx.db.patch(existingGame._id, updatedFields);
+    await ctx.db.patch(existingGame._id, {
+      player2: args.player,
+    });
   },
 });
+
 
 
 export const updateGameState = mutation({
