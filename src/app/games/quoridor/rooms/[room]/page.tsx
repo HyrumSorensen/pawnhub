@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { QuoridorGameEngine } from "../../QuoridorGameEngine";
+import { QuoridorGameEngine, GameState} from "../../QuoridorGameEngine";
 import { eventBus } from "../../QuoridorEventSingleton";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -17,6 +17,7 @@ import { Id } from "@/convex/_generated/dataModel";
 import ChatBox from "../../components/ChatBox";
 import QuoridorTutorial from "../../components/QuoridorTutorial";
 
+
 export default function HomePage() {
   const params = useParams();
   const roomId = params.room as string;
@@ -26,8 +27,6 @@ export default function HomePage() {
   const getGameState = useQuery(api.games.getGameState, { room: roomId });
   const getGame = useQuery(api.games.getGame, { room: roomId });
   const setGameCompleted = useMutation(api.games.setGameCompleted);
-  const initializeGame = useMutation(api.gameSaves.initializeGame);
-  const appendGameState = useMutation(api.gameSaves.appendGameState);
   const closeGame = useMutation(api.games.closeGame);
   const userId = useQuery(api.users.getCurrentUserId);
   const user = useQuery(api.users.getUserById, userId ? { userId } : "skip");
@@ -105,13 +104,6 @@ export default function HomePage() {
       }
 
       createOrJoinRoom(userId);
-
-      initializeGame({
-        userId: userId,
-        gameId: newGameId,
-        initialState: game.serializeState(),
-        createdAt: Date.now(),
-      });
     }
 
     const handler = () => {
@@ -122,16 +114,59 @@ export default function HomePage() {
     return () => {
       eventBus.off("gameStateUpdated", handler);
     };
-  }, [userId, initializeGame, createGame, roomId, joinGame, getGame]);
+  }, [userId, createGame, roomId, joinGame, getGame]);
 
-  async function saveCurrentGameState() {
-    if (!engine || !gameId) return;
 
-    await appendGameState({
-      gameId,
-      newState: engine.serializeState(),
-    });
-  }
+  useEffect(() => {
+    if (
+      engine === null ||
+      userId === undefined ||
+      getGame === undefined ||
+      getGame === null ||
+      getGameState === undefined ||
+      getGameState === null ||
+      getGameState.length === 0
+    ) {
+      return;
+    }
+  
+    // Parse the latest state from the DB
+    const latestSerialized = getGameState[getGameState.length - 1];
+    let latestState: GameState;
+  
+    try {
+      latestState = JSON.parse(latestSerialized);
+    } catch (e) {
+      console.error("Failed to parse game state:", e);
+      return;
+    }
+  
+    // Already a 4-player game? Do nothing
+    const existingPlayerCount = Object.keys(latestState.players).length;
+    if (existingPlayerCount >= 4) return;
+  
+    // Check how many players have joined the room
+    const joinedPlayers = [
+      getGame.player1,
+      getGame.player2,
+      getGame.player3,
+      getGame.player4,
+    ].filter(Boolean);
+  
+    // Promote only if 3 or more players have joined
+    if (joinedPlayers.length >= 3) {
+      const newEngine = new QuoridorGameEngine(4);
+      setEngine(newEngine);
+      setBoard(renderBoard(newEngine));
+  
+      updateGameState({
+        room: roomId,
+        state: newEngine.serializeState(),
+      });
+    }
+  }, [engine, userId, getGame, getGameState, updateGameState, roomId]);
+  
+  
 
   async function maybeCloseGame() {
     if (!getGame || !getGame.open) return;
@@ -200,7 +235,6 @@ export default function HomePage() {
       const success = engine.movePawnTo(currentPlayer, { row: r, col: c });
       if (success) {
         setFirstSelectedCell([-1, -1]);
-        saveCurrentGameState();
         updateCurrentGameState();
         maybeCloseGame();
       } else {
@@ -241,12 +275,6 @@ export default function HomePage() {
       orientation,
       length,
     });
-
-    if (success) {
-      saveCurrentGameState();
-    } else {
-      console.warn("Invalid wall placement");
-    }
 
     setHoveredWall(null);
     updateCurrentGameState();

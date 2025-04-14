@@ -519,9 +519,17 @@ export class QuoridorGameEngine {
   }
 
   // Load from serialized game state
-  //   public loadState(serialized: string): void {
-  //     // Placeholder
-  //   }
+  public loadState(serialized: string): void {
+    try {
+      const parsed: GameState = JSON.parse(serialized);
+      this.state = parsed;
+      this.numPlayers = Object.keys(parsed.players).length as 2 | 4;
+      eventBus.emit("gameStateUpdated", this.getState());
+    } catch (err) {
+      console.error("Failed to load game state:", err);
+    }
+  }
+  
 
   // Reset the game to start over ******************************************
   public resetGame(): void {

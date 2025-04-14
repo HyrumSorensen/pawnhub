@@ -16,12 +16,6 @@ const schema = defineSchema({
     avatarUrl: v.optional(v.string()),
   }),
 
-  gameSaves: defineTable({
-    userId: v.id("users"),
-    gameId: v.string(),
-    moveHistory: v.array(v.string()), // Array of serialized game states
-    createdAt: v.number(), // UNIX timestamp
-  }).index("by_gameId", ["gameId"]),
 
   games: defineTable({
     room: v.string(),
