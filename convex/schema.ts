@@ -31,6 +31,52 @@ const schema = defineSchema({
     completed: v.boolean(),
     open: v.boolean()
   }).index("by_room", ["room"]),
+  pokerGroups: defineTable({
+    name: v.string(),
+    admin: v.id("users"),
+    createdAt: v.number(),
+    description: v.optional(v.string()),
+    groupCode: v.string(),
+  }),
+  
+  
+  pokerGroupMembers: defineTable({
+    groupId: v.id("pokerGroups"),
+    userId: v.id("users"),
+    role: v.optional(v.union(v.literal("admin"), v.literal("member"))),
+    joinedAt: v.number(),
+  
+    // New field: dynamic map of chip type IDs to counts
+    chipCounts: v.optional(
+      v.record(v.id("pokerChipTypes"), v.number())
+    ),
+  }).index("by_group", ["groupId"]),
+  
+  
+  pokerChipTypes: defineTable({
+    groupId: v.id("pokerGroups"),
+    name: v.string(),
+    value: v.number(),
+    color: v.optional(v.string()),
+    createdAt: v.number(),
+  }).index("by_group", ["groupId"]),
+  
+  chipTransactions: defineTable({
+    // The poker group where the transaction occurred.
+    groupId: v.id("pokerGroups"),
+    // The user whose chip count changed.
+    userId: v.id("users"),
+    // Reference to the chip type for this transaction.
+    chipTypeId: v.id("pokerChipTypes"),
+    transactionType: v.string(),
+    amount: v.number(),
+    timestamp: v.number(),
+    note: v.optional(v.string()),
+  }).index("by_group_user", ["groupId", "userId"]),
 });
+
+
+
+
 
 export default schema;

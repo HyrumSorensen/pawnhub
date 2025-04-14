@@ -14,7 +14,7 @@ import TilePlayer3 from "../../assets/TilePlayer3";
 import TilePlayer4 from "../../assets/TilePlayer4";
 import { useParams } from "next/navigation";
 import { Id } from "@/convex/_generated/dataModel";
-import ChatBox from "../../components/ChatBox";
+import ChatBox from "../../../../../components/ChatBox";
 import QuoridorTutorial from "../../components/QuoridorTutorial";
 
 export default function HomePage() {

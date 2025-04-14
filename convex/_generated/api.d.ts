@@ -16,6 +16,7 @@ import type {
 import type * as auth from "../auth.js";
 import type * as games from "../games.js";
 import type * as http from "../http.js";
+import type * as pokerChipTracker from "../pokerChipTracker.js";
 import type * as storage from "../storage.js";
 import type * as users from "../users.js";
 
@@ -31,6 +32,7 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   games: typeof games;
   http: typeof http;
+  pokerChipTracker: typeof pokerChipTracker;
   storage: typeof storage;
   users: typeof users;
 }>;
