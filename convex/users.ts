@@ -2,7 +2,7 @@
 import { query, mutation } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
-import { Id, Doc } from "@/convex/_generated/dataModel";
+import { Id } from "@/convex/_generated/dataModel";
 export const getCurrentUserId = query({
   handler: async (ctx) => {
     const userId = await getAuthUserId(ctx);
@@ -59,8 +59,8 @@ export const getUsersByIds = query({
       })
     );
 
-    return users.filter((u): u is { _id: Id<"users">; name: string } => u !== null);
-
+    return users.filter(
+      (u): u is { _id: Id<"users">; name: string } => u !== null
+    );
   },
 });
-

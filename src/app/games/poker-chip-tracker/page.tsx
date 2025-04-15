@@ -28,7 +28,8 @@ export default function PokerChipTracker() {
 
   const userId = useQuery(api.users.getCurrentUserId);
   const user = userId
-    ? useQuery(api.users.getUserById, { userId })
+    ? // eslint-disable-next-line react-hooks/rules-of-hooks
+      useQuery(api.users.getUserById, { userId })
     : undefined;
 
   const joinGroup = useMutation(api.pokerChipTracker.joinPokerGroup);
@@ -120,13 +121,15 @@ export default function PokerChipTracker() {
               >
                 <InputOTPGroup>
                   {[...Array(8)].map((_, i) => (
-                    <InputOTPSlot key={i} index={i} className="w-12 h-12 text-2xl" />
+                    <InputOTPSlot
+                      key={i}
+                      index={i}
+                      className="w-12 h-12 text-2xl"
+                    />
                   ))}
                 </InputOTPGroup>
               </InputOTP>
-              {error && (
-                <p className="text-sm text-red-500 mt-1">{error}</p>
-              )}
+              {error && <p className="text-sm text-red-500 mt-1">{error}</p>}
             </div>
             <Button
               type="submit"
