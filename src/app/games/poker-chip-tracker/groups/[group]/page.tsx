@@ -63,13 +63,13 @@ export default function GroupPage() {
   // Derived
   const isAdmin = groupDetails?.admin === userId;
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const userChipTotals =
     members?.map((member) => {
       const total =
         transactions
           ?.filter((tx) => tx.userId === member.userId)
           .reduce((sum, tx) => sum + tx.amount, 0) ?? 0;
-      console.log("chip totals:", userChipTotals);
 
       return {
         userId: member.userId,
