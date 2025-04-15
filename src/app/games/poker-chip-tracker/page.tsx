@@ -27,10 +27,17 @@ export default function PokerChipTracker() {
   const router = useRouter();
 
   const userId = useQuery(api.users.getCurrentUserId);
-  const user = userId
-    ? // eslint-disable-next-line react-hooks/rules-of-hooks
-      useQuery(api.users.getUserById, { userId })
-    : undefined;
+  
+  const user = useQuery(
+    api.users.getUserById,
+    userId ? { userId } : "skip"
+  );
+
+    const userGroups = useQuery(
+      api.pokerChipTracker.listGroupsForUser,
+      userId ? { userId } : "skip"
+    );
+    
 
   const joinGroup = useMutation(api.pokerChipTracker.joinPokerGroup);
   const createGroup = useMutation(api.pokerChipTracker.createPokerGroup);
@@ -97,8 +104,8 @@ export default function PokerChipTracker() {
   };
 
   return (
-    <div className="flex justify-center items-center min-h-screen bg-background p-4">
-      <Card className="w-full max-w-md">
+    <div className="flex flex-col justify-center items-center min-h-screen bg-background p-4">
+      <Card className="w-full max-w-md mb-4">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold text-center flex items-center justify-center">
             <MdOutlineGroup className="inline-block mr-2 text-4xl" />
@@ -162,6 +169,27 @@ export default function PokerChipTracker() {
           </div>
         </CardContent>
       </Card>
+      {userGroups && userGroups.length > 0 && (
+      <Card className="w-full max-w-md mt-4">
+        <CardHeader>
+          <CardTitle className="text-xl">Your Poker Groups</CardTitle>
+          <CardDescription>Click a group to open it</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {userGroups.map((group) => (
+            <Button
+              key={group._id}
+              className="w-full justify-start"
+              onClick={() =>
+                router.push(`/games/poker-chip-tracker/groups/${group._id}`)
+              }
+            >
+              {group.name} ({group.groupCode})
+            </Button>
+          ))}
+        </CardContent>
+      </Card>
+    )}
     </div>
   );
 }

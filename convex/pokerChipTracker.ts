@@ -389,3 +389,21 @@ export const adjustDistributedChips = mutation({
   },
 });
 
+
+export const listGroupsForUser = query({
+  args: {
+    userId: v.id("users"),
+  },
+  handler: async (ctx, { userId }) => {
+    const memberships = await ctx.db
+      .query("pokerGroupMembers")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+
+    const groupIds = memberships.map((m) => m.groupId);
+    const groups = await Promise.all(groupIds.map((id) => ctx.db.get(id)));
+
+    return groups.filter((g) => g !== null);
+  },
+});
+

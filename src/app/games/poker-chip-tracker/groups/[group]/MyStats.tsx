@@ -76,7 +76,7 @@ export default function MyStats({
         </span>
       </p>
 
-      <h3 className="text-lg font-medium mb-2">Recent Transactions</h3>
+      {/* <h3 className="text-lg font-medium mb-2">Recent Transactions</h3>
       {transactions?.length ? (
         <ul className="list-disc pl-5">
           {transactions.map((tx) => (
@@ -88,53 +88,73 @@ export default function MyStats({
         </ul>
       ) : (
         <p>No transactions yet.</p>
-      )}
+      )} */}
 
-      {transactions?.length ? (
-        <div className="mt-8">
-          <h3 className="text-lg font-medium mb-2">Chip History</h3>
-          <Line
-            data={{
-              labels: transactions
-                .sort((a, b) => a.timestamp - b.timestamp)
-                .map((tx) => new Date(tx.timestamp).toLocaleDateString()),
-              datasets: [
-                {
-                  label: "Chips Over Time",
-                  data: (() => {
-                    let total = 0;
-                    return transactions
-                      .sort((a, b) => a.timestamp - b.timestamp)
-                      .map((tx) => {
-                        total += tx.amount;
-                        return total;
-                      });
-                  })(),
-                  borderColor: "rgb(75, 192, 192)",
-                  backgroundColor: "rgba(75, 192, 192, 0.2)",
-                  tension: 0.3,
-                },
-              ],
-            }}
-            options={{
-              responsive: true,
-              plugins: {
-                legend: {
-                  display: false,
-                },
-                title: {
-                  display: false,
+{transactions?.length ? (
+  <div className="mt-8">
+    <h3 className="text-lg font-medium mb-2">Chip History</h3>
+
+    {(() => {
+      const chipValueMap = Object.fromEntries(
+        chipTypes.map((chip) => [chip._id, chip.value])
+      );
+
+      // Group net value per date
+      const dailyTotals: Record<string, number> = {};
+      transactions
+        .sort((a, b) => a.timestamp - b.timestamp)
+        .forEach((tx) => {
+          const date = new Date(tx.timestamp).toLocaleDateString();
+          const value = chipValueMap[tx.chipTypeId] ?? 1;
+          const net = tx.amount * value;
+          dailyTotals[date] = (dailyTotals[date] ?? 0) + net;
+        });
+
+      const sortedDates = Object.keys(dailyTotals).sort(
+        (a, b) => new Date(a).getTime() - new Date(b).getTime()
+      );
+
+      let runningTotal = 0;
+      const cumulativeData = sortedDates.map((date) => {
+        runningTotal += dailyTotals[date];
+        return runningTotal;
+      });
+
+      return (
+        <Line
+          data={{
+            labels: sortedDates,
+            datasets: [
+              {
+                label: "Net Value Over Time",
+                data: cumulativeData,
+                borderColor: "rgb(75, 192, 192)",
+                backgroundColor: "rgba(75, 192, 192, 0.2)",
+                tension: 0, // straight lines
+              },
+            ],
+          }}
+          options={{
+            responsive: true,
+            plugins: {
+              legend: { display: false },
+              title: { display: false },
+            },
+            scales: {
+              y: {
+                beginAtZero: true,
+                ticks: {
+                  callback: (value) => `$${value}`,
                 },
               },
-              scales: {
-                y: {
-                  beginAtZero: true,
-                },
-              },
-            }}
-          />
-        </div>
-      ) : null}
+            },
+          }}
+        />
+      );
+    })()}
+  </div>
+) : null}
+
 
       {/* Chip Count Table */}
       <div className="mt-8">

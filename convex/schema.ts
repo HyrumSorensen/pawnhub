@@ -53,7 +53,8 @@ const schema = defineSchema({
     distributedChipCounts: v.optional(
       v.record(v.id("pokerChipTypes"), v.number())
     ),
-  }).index("by_group", ["groupId"]),
+  }).index("by_group", ["groupId"])
+  .index("by_user", ["userId"]),
   
   
   
