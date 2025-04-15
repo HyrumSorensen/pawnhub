@@ -1,11 +1,9 @@
 "use client";
 
-import { Id, Doc } from "@/convex/_generated/dataModel";
+import { Doc } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 
-import {
-  Line
-} from "react-chartjs-2";
+import { Line } from "react-chartjs-2";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -14,10 +12,18 @@ import {
   LineElement,
   Title,
   Tooltip,
-  Legend
+  Legend,
 } from "chart.js";
 
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend
+);
 
 interface MyStatsProps {
   user: Doc<"users">;
@@ -46,11 +52,12 @@ export default function MyStats({
 }: MyStatsProps) {
   // Calculate net total across all chip types
   const netTotal = chipTypes.reduce((sum, chip) => {
-    const actual = Number(editableCounts[chip._id] ?? chipCounts[chip._id] ?? 0);
+    const actual = Number(
+      editableCounts[chip._id] ?? chipCounts[chip._id] ?? 0
+    );
     const distributed = distributedCounts[chip._id] ?? 0;
     return sum + (actual - distributed) * chip.value;
   }, 0);
-  
 
   return (
     <section>
@@ -145,20 +152,29 @@ export default function MyStats({
                       {chip.name}
                     </th>
                   ))}
-                  <th className="px-4 py-2 border border-gray-300 text-left">Net</th>
-                  <th className="px-4 py-2 border border-gray-300 text-left">Actions</th>
+                  <th className="px-4 py-2 border border-gray-300 text-left">
+                    Net
+                  </th>
+                  <th className="px-4 py-2 border border-gray-300 text-left">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 <tr>
                   {chipTypes.map((chip) => {
-                    const actual = Number(editableCounts[chip._id] ?? chipCounts[chip._id] ?? 0);
+                    const actual = Number(
+                      editableCounts[chip._id] ?? chipCounts[chip._id] ?? 0
+                    );
                     const distributed = distributedCounts[chip._id] ?? 0;
                     const net = (actual - distributed) * chip.value;
-
+                    console.log("NET:", net);
 
                     return (
-                      <td key={chip._id} className="px-2 py-2 border border-gray-300 text-center">
+                      <td
+                        key={chip._id}
+                        className="px-2 py-2 border border-gray-300 text-center"
+                      >
                         <input
                           type="number"
                           className="w-16 px-1 py-0.5 border rounded text-center"
