@@ -343,4 +343,49 @@ export const getMemberChipCounts = query({
       return member.chipCounts ?? {};
     },
   });
+
+  export const getDistributedChipCounts = query({
+    args: {
+      groupId: v.id("pokerGroups"),
+      userId: v.id("users"),
+    },
+    handler: async (ctx, args) => {
+      const member = await ctx.db
+        .query("pokerGroupMembers")
+        .withIndex("by_group", (q) => q.eq("groupId", args.groupId))
+        .filter((q) => q.eq(q.field("userId"), args.userId))
+        .first();
   
+      if (!member) return null;
+      return member.distributedChipCounts ?? {};
+    },
+  });
+  
+  // convex/pokerGroupMembers.ts
+
+export const adjustDistributedChips = mutation({
+  args: {
+    groupId: v.id("pokerGroups"),
+    userId: v.id("users"),
+    chipTypeId: v.id("pokerChipTypes"),
+    amount: v.number(), // can be positive or negative
+  },
+  handler: async (ctx, args) => {
+    const member = await ctx.db
+      .query("pokerGroupMembers")
+      .withIndex("by_group", (q) => q.eq("groupId", args.groupId))
+      .filter((q) => q.eq(q.field("userId"), args.userId))
+      .first();
+
+    if (!member) {
+      throw new Error("Member not found");
+    }
+
+    const updatedCounts = { ...(member.distributedChipCounts ?? {}) };
+    const currentAmount = updatedCounts[args.chipTypeId] ?? 0;
+    updatedCounts[args.chipTypeId] = currentAmount + args.amount;
+
+    await ctx.db.patch(member._id, { distributedChipCounts: updatedCounts });
+  },
+});
+

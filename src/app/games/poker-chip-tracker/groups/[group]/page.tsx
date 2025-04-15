@@ -7,6 +7,12 @@ import { api } from "@/convex/_generated/api";
 import { Id, Doc } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import MyStats from "./MyStats";
+import GroupOverview from "./GroupOverview";
+import AdminPortal from "./AdminPortal";
+
+
+
 
 export default function GroupPage() {
   const { group } = useParams();
@@ -21,6 +27,7 @@ export default function GroupPage() {
   const addChipType = useMutation(api.pokerChipTracker.addChipType);
   const recordTransaction = useMutation(api.pokerChipTracker.recordChipTransaction);
   const updateChipCount = useMutation(api.pokerChipTracker.updateMemberChipCount);
+  const adjustDistributedChips = useMutation(api.pokerChipTracker.adjustDistributedChips);
 
   // Queries
   const userId = useQuery(api.users.getCurrentUserId);
@@ -224,266 +231,63 @@ const getUserName = (userId: Id<"users">) => {
 
       <Separator className="mb-6" />
 
-      {/* My Stats Tab */}
-      {tab === "my-stats" && (
-        <section>
-          <h2 className="text-xl font-semibold mb-4">My Stats</h2>
-          <p className="mb-2"><strong>Name:</strong> {user.name ?? "Unnamed User"}</p>
-          <p className="mb-4"><strong>Total Chips:</strong> {userTotal ?? 0}</p>
-          <h3 className="text-lg font-medium mb-2">Recent Transactions</h3>
-          {transactions?.length ? (
-            <ul className="list-disc pl-5">
-              {transactions.map((tx) => (
-                <li key={tx._id}>
-                  {tx.transactionType} — {tx.amount} ({new Date(tx.timestamp).toLocaleString()})
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p>No transactions yet.</p>
-          )}
-{/* Chip Count Table */}
-<div className="mt-8">
-  <h3 className="text-lg font-medium mb-2">My Chip Inventory</h3>
-
-  {chipTypes?.length ? (
-    <div className="overflow-x-auto">
-      <table className="table-auto w-full border border-gray-300 text-sm">
-        <thead>
-          <tr className="bg-gray-100">
-            {chipTypes.map((chip) => (
-              <th key={chip._id} className="px-4 py-2 border border-gray-300 text-left">
-                {chip.name}
-              </th>
-            ))}
-            <th className="px-4 py-2 border border-gray-300 text-left">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            {chipTypes.map((chip) => (
-              <td key={chip._id} className="px-2 py-2 border border-gray-300 text-center">
-                <input
-                  type="number"
-                  className="w-16 px-1 py-0.5 border rounded text-center"
-                  value={editableCounts[chip._id] ?? ""}
-                  onChange={(e) => {
-                    setEditableCounts((prev) => ({
-                      ...prev,
-                      [chip._id]: e.target.value,
-                    }));
-                    setHasChanges(true);
-                  }}
-                />
-              </td>
-            ))}
-            <td className="px-2 py-2 border border-gray-300 text-center">
-              {hasChanges && (
-                <Button size="sm" onClick={handleSubmitChipChanges}>
-                  Save
-                </Button>
-              )}
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  ) : (
-    <p>No chip types have been defined yet.</p>
-  )}
-</div>
+      {tab === "my-stats" && user && chipTypes && (
+          <MyStats
+            user={user}
+            chipTypes={chipTypes}
+            chipCounts={chipCounts ?? {}}
+            userTotal={userTotal ?? 0}
+            transactions={transactions ?? null}
+            editableCounts={editableCounts}
+            distributedCounts={members?.find((m) => m.userId === userId)?.distributedChipCounts ?? {}}
+            hasChanges={hasChanges}
+            onChange={(chipId, value) => {
+              setEditableCounts((prev) => ({
+                ...prev,
+                [chipId]: value,
+              }));
+              setHasChanges(true);
+            }}
+            onSubmit={handleSubmitChipChanges}
+          />
+        )}
 
 
-        </section>
-      )}
-
-      {/* Group Overview Tab */}
-      {tab === "group-overview" && (
-        <section>
-          <h2 className="text-xl font-semibold mb-4">Group Members</h2>
-          <ul className="list-disc pl-5 mb-6">
-            {members?.map((member) => (
-              <li key={member._id}>{member.userId}</li>
-            ))}
-          </ul>
-
-          <h2 className="text-xl font-semibold mb-2">Chip Types</h2>
-          {chipTypes?.length ? (
-            <ul className="list-disc pl-5">
-              {chipTypes.map((chip) => (
-                <li key={chip._id}>
-                  {chip.name} - ${chip.value}
-                  {chip.color && ` (${chip.color})`}
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p>No chip types defined yet.</p>
-          )}
-
-<h2 className="text-xl font-semibold mt-6 mb-2">All Member Chip Counts</h2>
-{chipTypes?.length && members?.length ? (
-  <div className="overflow-x-auto">
-    <table className="table-auto w-full border border-gray-300 text-sm">
-      <thead>
-        <tr className="bg-gray-100">
-          <th className="px-4 py-2 border border-gray-300 text-left">User</th>
-          {chipTypes.map((chip) => (
-            <th key={chip._id} className="px-4 py-2 border border-gray-300 text-left">
-              {chip.name}
-            </th>
-          ))}
-          {isAdmin && <th className="px-4 py-2 border border-gray-300 text-left">Actions</th>}
-        </tr>
-      </thead>
-      <tbody>
-        {members.map((member) => (
-          <tr key={member._id}>
-            <td className="px-4 py-2 border border-gray-300 text-left">
-              {getUserName(member.userId)}
-            </td>
-
-            {chipTypes.map((chip) => {
-              const current = member.chipCounts?.[chip._id] ?? 0;
-
-              if (!isAdmin) {
-                return (
-                  <td key={chip._id} className="px-4 py-2 border border-gray-300 text-center">
-                    {current}
-                  </td>
-                );
-              }
-
-              return (
-                <td key={chip._id} className="px-2 py-2 border border-gray-300 text-center">
-                  <input
-                    type="number"
-                    className="w-16 px-1 py-0.5 border rounded text-center"
-                    value={
-                      editedChipCounts[member.userId]?.[chip._id] ??
-                      current.toString()
-                    }
-                    onChange={(e) =>
-                      handleEditChip(member.userId, chip._id, e.target.value)
-                    }
-                  />
-                </td>
-              );
-            })}
-            {isAdmin && (
-              <td className="px-4 py-2 border border-gray-300 text-center">
-                {dirtyMembers.has(member.userId) && (
-                  <Button
-                    size="sm"
-                    onClick={() =>
-                      handleSaveMemberChips(member.userId as Id<"users">)
-                    }
-                  >
-                    Save
-                  </Button>
-                )}
-              </td>
-            )}
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  </div>
-) : (
-  <p>No data available yet.</p>
+{tab === "group-overview" && members && chipTypes && (
+  <GroupOverview
+    isAdmin={isAdmin}
+    chipTypes={chipTypes}
+    members={members}
+    getUserName={getUserName}
+    editedChipCounts={editedChipCounts}
+    dirtyMembers={dirtyMembers}
+    handleEditChip={handleEditChip}
+    handleSaveMemberChips={handleSaveMemberChips}
+  />
 )}
 
-        </section>
-      )}
 
-      {/* Admin Portal Tab */}
-      {tab === "admin" && isAdmin && (
-        <section>
-          <h2 className="text-xl font-semibold mb-4">Admin Portal</h2>
+{tab === "admin" && isAdmin && (
+  <AdminPortal
+    groupId={groupId}
+    chipName={chipName}
+    setChipName={setChipName}
+    chipValue={chipValue}
+    setChipValue={setChipValue}
+    chipColor={chipColor}
+    setChipColor={setChipColor}
+    addChipType={addChipType}
+    adjustDistributedChips={adjustDistributedChips}
+    chipTypes={chipTypes ?? []}
+    members={members ?? []}
+    getUserName={getUserName}
+    editedChipCounts={editedChipCounts}
+    handleEditChip={handleEditChip}
+    dirtyMembers={dirtyMembers}
+    setDirtyMembers={setDirtyMembers}
+  />
+)}
 
-          {/* Add Chip Form */}
-          <div className="mb-6">
-            <h3 className="text-lg font-medium mb-2">Add New Chip Type</h3>
-            <form
-              className="space-y-2"
-              onSubmit={async (e) => {
-                e.preventDefault();
-                if (!chipName || !chipValue) return;
-
-                await addChipType({
-                  groupId,
-                  name: chipName,
-                  value: parseFloat(chipValue),
-                  createdAt: Date.now(),
-                  color: chipColor || undefined,
-                });
-
-                setChipName("");
-                setChipValue("");
-                setChipColor("");
-              }}
-            >
-              <input
-                type="text"
-                placeholder="Chip Name"
-                className="w-full border rounded px-2 py-1"
-                value={chipName}
-                onChange={(e) => setChipName(e.target.value)}
-              />
-              <input
-                type="number"
-                placeholder="Chip Value"
-                className="w-full border rounded px-2 py-1"
-                value={chipValue}
-                onChange={(e) => setChipValue(e.target.value)}
-              />
-              <input
-                type="text"
-                placeholder="Chip Color (optional)"
-                className="w-full border rounded px-2 py-1"
-                value={chipColor}
-                onChange={(e) => setChipColor(e.target.value)}
-              />
-              <Button type="submit">Add Chip</Button>
-            </form>
-          </div>
-
-          {/* Manage Member Chips */}
-          <div>
-            <h3 className="text-lg font-medium mb-2">Manage Member Chips</h3>
-            {members?.map((member) => {
-              const userTotal = userChipTotals.find((u) => u.userId === member.userId)?.total ?? 0;
-
-              return (
-                <div
-                  key={member._id}
-                  className="border p-3 rounded mb-2 flex justify-between items-center"
-                >
-                  <div>
-                    <p>User: {member.userId}</p>
-                    <p>Chips: {userTotal}</p>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      onClick={() => recordChip("add", member.userId, 1)}
-                    >
-                      +1
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => recordChip("remove", member.userId, -1)}
-                    >
-                      -1
-                    </Button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      )}
     </div>
   );
 }

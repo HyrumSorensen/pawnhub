@@ -46,11 +46,15 @@ const schema = defineSchema({
     role: v.optional(v.union(v.literal("admin"), v.literal("member"))),
     joinedAt: v.number(),
   
-    // New field: dynamic map of chip type IDs to counts
     chipCounts: v.optional(
       v.record(v.id("pokerChipTypes"), v.number())
     ),
+  
+    distributedChipCounts: v.optional(
+      v.record(v.id("pokerChipTypes"), v.number())
+    ),
   }).index("by_group", ["groupId"]),
+  
   
   
   pokerChipTypes: defineTable({
