@@ -59,6 +59,7 @@ export default function GroupOverview({
                     {chip.name}
                   </th>
                 ))}
+                <th className="px-4 py-2 border border-gray-300 text-left">Net</th>
                 {isAdmin && (
                   <th className="px-4 py-2 border border-gray-300 text-left">Actions</th>
                 )}
@@ -98,6 +99,21 @@ export default function GroupOverview({
                       </td>
                     );
                   })}
+              <td className="px-2 py-2 border border-gray-300 text-center font-medium">
+                {(() => {
+                  const netTotal = chipTypes.reduce((sum, chip) => {
+                    const actual = member.chipCounts?.[chip._id] ?? 0;
+                    const distributed = member.distributedChipCounts?.[chip._id] ?? 0;
+                    return sum + (actual - distributed) * chip.value;
+                  }, 0);
+                  return (
+                    <span className={netTotal >= 0 ? "text-green-600" : "text-red-600"}>
+                      {netTotal > 0 ? "+" : ""}
+                      {netTotal}
+                    </span>
+                  );
+                })()}
+              </td>
 
                   {isAdmin && (
                     <td className="px-4 py-2 border border-gray-300 text-center">
