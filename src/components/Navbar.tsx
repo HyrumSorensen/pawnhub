@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,12 +32,28 @@ export default function Navbar() {
     <nav className="border-b bg-background">
       <div className="container mx-auto px-4 py-3">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <div className="h-8 w-8 rounded-md bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-bold">G</span>
-            </div>
-            <span className="font-semibold text-lg">GameHub</span>
-          </div>
+
+
+        <div className="flex items-center space-x-2 group">
+  <div className="h-8 w-8 rounded-md bg-primary flex items-center justify-center transition-transform duration-300 group-hover:rotate-6 group-hover:scale-110">
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 256 256"
+      className="h-5 w-5 text-primary-foreground"
+      fill="currentColor"
+    >
+      <path d="M176 184H80a8 8 0 0 0-8 8v16h112v-16a8 8 0 0 0-8-8ZM96 96a32 32 0 1 1 64 0c0 11.8-6.4 22.1-16 27.7V136h8a8 8 0 0 1 0 16H104a8 8 0 0 1 0-16h8v-12.3c-9.6-5.6-16-15.9-16-27.7Z"/>
+    </svg>
+  </div>
+  <span className="font-semibold text-lg">
+    <span className="text-primary">Pawn</span>
+    <span className="text-orange-500">Hub</span>
+  </span>
+</div>
+
+
+
+
 
           <div className="hidden md:flex items-center space-x-6">
             <Link
