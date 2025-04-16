@@ -12,6 +12,8 @@ import {
 import { useQuery, useConvex } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Line } from "react-chartjs-2";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { User } from "lucide-react";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -38,6 +40,7 @@ interface GroupOverviewProps {
   chipTypes: Doc<"pokerChipTypes">[];
   members: Doc<"pokerGroupMembers">[];
   getUserName: (userId: Id<"users">) => string;
+  getUserImage: (userId: Id<"users">) => string;
   editedChipCounts: { [userId: string]: { [chipTypeId: string]: string } };
   dirtyMembers: Set<string>;
   handleEditChip: (userId: string, chipTypeId: string, value: string) => void;
@@ -49,6 +52,7 @@ export default function GroupOverview({
   chipTypes,
   members,
   getUserName,
+  getUserImage,
   editedChipCounts,
   dirtyMembers,
   handleEditChip,
@@ -162,7 +166,18 @@ export default function GroupOverview({
               </tr>
             </thead>
             <tbody>
-              {members.map((member) => (
+            {[...members]
+              .sort((a, b) => {
+                const getNet = (m: Doc<"pokerGroupMembers">) =>
+                  chipTypes.reduce((sum, chip) => {
+                    const actual = m.chipCounts?.[chip._id] ?? 0;
+                    const distributed = m.distributedChipCounts?.[chip._id] ?? 0;
+                    return sum + (actual - distributed) * chip.value;
+                  }, 0);
+
+                return getNet(b) - getNet(a);
+              })
+              .map((member) => (
                 <tr key={member._id}>
                   <td
                     className="px-4 py-2 border border-gray-300 text-left cursor-pointer text-blue-600 hover:underline"
@@ -171,12 +186,19 @@ export default function GroupOverview({
                       setShowModal(true);
                     }}
                   >
-                    {getUserName(member.userId)}
+                    <div className="flex items-center gap-2">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={getUserImage(member.userId)} />
+                        <AvatarFallback>
+                          <User className="h-4 w-4" />
+                        </AvatarFallback>
+                      </Avatar>
+                      <span>{getUserName(member.userId)}</span>
+                    </div>
                   </td>
 
                   {chipTypes.map((chip) => {
                     const current = member.chipCounts?.[chip._id] ?? 0;
-
                     if (!isAdmin) {
                       return (
                         <td
@@ -187,7 +209,6 @@ export default function GroupOverview({
                         </td>
                       );
                     }
-
                     return (
                       <td
                         key={chip._id}
@@ -235,12 +256,7 @@ export default function GroupOverview({
                   {isAdmin && (
                     <td className="px-4 py-2 border border-gray-300 text-center">
                       {dirtyMembers.has(member.userId) && (
-                        <Button
-                          size="sm"
-                          onClick={() =>
-                            handleSaveMemberChips(member.userId as Id<"users">)
-                          }
-                        >
+                        <Button size="sm" onClick={() => handleSaveMemberChips(member.userId)}>
                           Save
                         </Button>
                       )}

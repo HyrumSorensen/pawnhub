@@ -15,71 +15,28 @@ export default function GroupPage() {
   const { group } = useParams();
   const groupId = group as Id<"pokerGroups">;
 
-  const [tab, setTab] = useState<"my-stats" | "group-overview" | "admin">(
-    "my-stats"
-  );
+  const [tab, setTab] = useState<"my-stats" | "group-overview" | "admin">("my-stats");
   const [chipName, setChipName] = useState("");
   const [chipValue, setChipValue] = useState("");
   const [chipColor, setChipColor] = useState("");
 
-  // Mutations (called top-level to satisfy React rules)
   const addChipType = useMutation(api.pokerChipTracker.addChipType);
-  const recordTransaction = useMutation(
-    api.pokerChipTracker.recordChipTransaction
-  );
-  const updateChipCount = useMutation(
-    api.pokerChipTracker.updateMemberChipCount
-  );
-  const adjustDistributedChips = useMutation(
-    api.pokerChipTracker.adjustDistributedChips
-  );
+  const recordTransaction = useMutation(api.pokerChipTracker.recordChipTransaction);
+  const updateChipCount = useMutation(api.pokerChipTracker.updateMemberChipCount);
+  const adjustDistributedChips = useMutation(api.pokerChipTracker.adjustDistributedChips);
 
-  // Queries
   const userId = useQuery(api.users.getCurrentUserId);
   const user = useQuery(api.users.getUserById, userId ? { userId } : "skip");
-
-  const groupDetails = useQuery(api.pokerChipTracker.getPokerGroup, {
-    groupId,
-  }) as Doc<"pokerGroups"> | null;
-  const members = useQuery(api.pokerChipTracker.listPokerGroupMembers, {
-    groupId,
-  });
+  const groupDetails = useQuery(api.pokerChipTracker.getPokerGroup, { groupId }) as Doc<"pokerGroups"> | null;
+  const members = useQuery(api.pokerChipTracker.listPokerGroupMembers, { groupId });
   const chipTypes = useQuery(api.pokerChipTracker.listChipTypes, { groupId });
-  const chipCounts = useQuery(
-    api.pokerChipTracker.getMemberChipCounts,
-    userId && groupId ? { groupId, userId } : "skip"
-  );
+  const chipCounts = useQuery(api.pokerChipTracker.getMemberChipCounts, userId && groupId ? { groupId, userId } : "skip");
+  const transactions = useQuery(api.pokerChipTracker.listChipTransactions, { groupId, userId: userId ?? undefined });
+  const userTotal = useQuery(api.pokerChipTracker.getUserChipTotal, userId ? { groupId, userId } : "skip");
 
-  const transactions = useQuery(api.pokerChipTracker.listChipTransactions, {
-    groupId,
-    userId: userId ?? undefined,
-  });
-
-  const userTotal = useQuery(
-    api.pokerChipTracker.getUserChipTotal,
-    userId ? { groupId, userId } : "skip"
-  );
-
-  // Derived
   const isAdmin = groupDetails?.admin === userId;
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const userChipTotals =
-    members?.map((member) => {
-      const total =
-        transactions
-          ?.filter((tx) => tx.userId === member.userId)
-          .reduce((sum, tx) => sum + tx.amount, 0) ?? 0;
-
-      return {
-        userId: member.userId,
-        total,
-      };
-    }) ?? [];
-
-  const [editableCounts, setEditableCounts] = useState<{
-    [chipTypeId: Id<"pokerChipTypes">]: string;
-  }>({});
+  const [editableCounts, setEditableCounts] = useState<{ [chipTypeId: Id<"pokerChipTypes">]: string }>({});
   const [hasChanges, setHasChanges] = useState(false);
 
   const [editedChipCounts, setEditedChipCounts] = useState<{
@@ -87,17 +44,10 @@ export default function GroupPage() {
   }>({});
   const [dirtyMembers, setDirtyMembers] = useState<Set<string>>(new Set());
 
-  const handleEditChip = (
-    userId: string,
-    chipTypeId: string,
-    value: string
-  ) => {
+  const handleEditChip = (userId: string, chipTypeId: string, value: string) => {
     setEditedChipCounts((prev) => ({
       ...prev,
-      [userId]: {
-        ...prev[userId],
-        [chipTypeId]: value,
-      },
+      [userId]: { ...prev[userId], [chipTypeId]: value },
     }));
     setDirtyMembers((prev) => new Set(prev).add(userId));
   };
@@ -114,13 +64,7 @@ export default function GroupPage() {
       if (newCount !== current) {
         const diff = newCount - current;
 
-        await updateChipCount({
-          groupId,
-          userId,
-          chipTypeId: chip._id,
-          amount: diff,
-        });
-
+        await updateChipCount({ groupId, userId, chipTypeId: chip._id, amount: diff });
         await recordTransaction({
           groupId,
           userId,
@@ -140,7 +84,6 @@ export default function GroupPage() {
     });
   };
 
-  // initialize editableCounts when chipCounts load
   useEffect(() => {
     if (chipCounts && chipTypes) {
       const initial: typeof editableCounts = {};
@@ -162,15 +105,7 @@ export default function GroupPage() {
       if (newCount !== prevCount) {
         const diff = newCount - prevCount;
 
-        // Update chip count
-        await updateChipCount({
-          groupId,
-          userId,
-          chipTypeId: chip._id,
-          amount: diff,
-        });
-
-        // Record transaction
+        await updateChipCount({ groupId, userId, chipTypeId: chip._id, amount: diff });
         await recordTransaction({
           groupId,
           userId,
@@ -186,56 +121,40 @@ export default function GroupPage() {
     setHasChanges(false);
   };
 
-  // Action handler
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const recordChip = async (
-    type: "add" | "remove",
-    targetUserId: Id<"users">,
-    amount: number
-  ) => {
-    const defaultChip = chipTypes?.[0];
-    if (!defaultChip) return;
-
-    await recordTransaction({
-      groupId,
-      userId: targetUserId,
-      chipTypeId: defaultChip._id,
-      transactionType: type,
-      amount,
-      timestamp: Date.now(),
-    });
-  };
-
   const userIdList = members?.map((m) => m.userId) ?? [];
+  const usersInGroup = useQuery(api.users.getUsersByIds, userIdList.length ? { userIds: userIdList } : "skip");
 
-  const usersInGroup = useQuery(
-    api.users.getUsersByIds,
-    userIdList.length ? { userIds: userIdList } : "skip"
-  );
-
-  // Helper: map userId -> name
   const getUserName = (userId: Id<"users">) => {
     const user = usersInGroup?.find((u) => u._id === userId);
     return user?.name ?? userId;
   };
 
+  const getUserImage = (userId: Id<"users">) => {
+    const user = usersInGroup?.find((u) => u._id === userId);
+    return user?.image ?? "";
+  };
+  
+
   if (!groupDetails || !userId || !user) {
-    return <div className="p-6">Loading group...</div>;
+    return <div className="p-8 text-center text-lg text-muted-foreground">Loading group details...</div>;
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6">{groupDetails.name}</h1>
+    <main className="max-w-5xl mx-auto px-4 py-8">
+      <header className="mb-8 text-center">
+        <h1 className="text-4xl font-bold tracking-tight">{groupDetails.name}</h1>
+      </header>
 
-      {/* Tabs */}
-      <div className="flex gap-4 mb-6">
+      <div className="flex justify-center gap-2 mb-6">
         <Button
+          size="sm"
           variant={tab === "my-stats" ? "default" : "outline"}
           onClick={() => setTab("my-stats")}
         >
           My Stats
         </Button>
         <Button
+          size="sm"
           variant={tab === "group-overview" ? "default" : "outline"}
           onClick={() => setTab("group-overview")}
         >
@@ -243,6 +162,7 @@ export default function GroupPage() {
         </Button>
         {isAdmin && (
           <Button
+            size="sm"
             variant={tab === "admin" ? "default" : "outline"}
             onClick={() => setTab("admin")}
           >
@@ -253,63 +173,62 @@ export default function GroupPage() {
 
       <Separator className="mb-6" />
 
-      {tab === "my-stats" && user && chipTypes && (
-        <MyStats
-          user={user}
-          chipTypes={chipTypes}
-          chipCounts={chipCounts ?? {}}
-          userTotal={userTotal ?? 0}
-          transactions={transactions ?? null}
-          editableCounts={editableCounts}
-          distributedCounts={
-            members?.find((m) => m.userId === userId)?.distributedChipCounts ??
-            {}
-          }
-          hasChanges={hasChanges}
-          onChange={(chipId, value) => {
-            setEditableCounts((prev) => ({
-              ...prev,
-              [chipId]: value,
-            }));
-            setHasChanges(true);
-          }}
-          onSubmit={handleSubmitChipChanges}
-        />
-      )}
+      <section>
+        {tab === "my-stats" && chipTypes && (
+          <MyStats
+            user={user}
+            chipTypes={chipTypes}
+            chipCounts={chipCounts ?? {}}
+            userTotal={userTotal ?? 0}
+            transactions={transactions ?? null}
+            editableCounts={editableCounts}
+            distributedCounts={
+              members?.find((m) => m.userId === userId)?.distributedChipCounts ?? {}
+            }
+            hasChanges={hasChanges}
+            onChange={(chipId, value) => {
+              setEditableCounts((prev) => ({ ...prev, [chipId]: value }));
+              setHasChanges(true);
+            }}
+            onSubmit={handleSubmitChipChanges}
+          />
+        )}
 
-      {tab === "group-overview" && members && chipTypes && (
-        <GroupOverview
-          isAdmin={isAdmin}
-          chipTypes={chipTypes}
-          members={members}
-          getUserName={getUserName}
-          editedChipCounts={editedChipCounts}
-          dirtyMembers={dirtyMembers}
-          handleEditChip={handleEditChip}
-          handleSaveMemberChips={handleSaveMemberChips}
-        />
-      )}
+        {tab === "group-overview" && members && chipTypes && (
+          <GroupOverview
+            isAdmin={isAdmin}
+            chipTypes={chipTypes}
+            members={members}
+            getUserName={getUserName}
+            getUserImage={getUserImage}
+            editedChipCounts={editedChipCounts}
+            dirtyMembers={dirtyMembers}
+            handleEditChip={handleEditChip}
+            handleSaveMemberChips={handleSaveMemberChips}
+          />
+        )}
 
-      {tab === "admin" && isAdmin && (
-        <AdminPortal
-          groupId={groupId}
-          chipName={chipName}
-          setChipName={setChipName}
-          chipValue={chipValue}
-          setChipValue={setChipValue}
-          chipColor={chipColor}
-          setChipColor={setChipColor}
-          addChipType={addChipType}
-          adjustDistributedChips={adjustDistributedChips}
-          chipTypes={chipTypes ?? []}
-          members={members ?? []}
-          getUserName={getUserName}
-          editedChipCounts={editedChipCounts}
-          handleEditChip={handleEditChip}
-          dirtyMembers={dirtyMembers}
-          setDirtyMembers={setDirtyMembers}
-        />
-      )}
-    </div>
+        {tab === "admin" && isAdmin && (
+          <AdminPortal
+            groupId={groupId}
+            chipName={chipName}
+            setChipName={setChipName}
+            chipValue={chipValue}
+            setChipValue={setChipValue}
+            chipColor={chipColor}
+            setChipColor={setChipColor}
+            addChipType={addChipType}
+            adjustDistributedChips={adjustDistributedChips}
+            chipTypes={chipTypes ?? []}
+            members={members ?? []}
+            getUserName={getUserName}
+            editedChipCounts={editedChipCounts}
+            handleEditChip={handleEditChip}
+            dirtyMembers={dirtyMembers}
+            setDirtyMembers={setDirtyMembers}
+          />
+        )}
+      </section>
+    </main>
   );
 }

@@ -55,12 +55,19 @@ export const getUsersByIds = query({
     const users = await Promise.all(
       userIds.map(async (id) => {
         const user = await ctx.db.get(id);
-        return user ? { _id: id, name: user.name ?? "Unnamed" } : null;
+        return user
+          ? {
+              _id: id,
+              name: user.name ?? "Unnamed",
+              image: user.avatarUrl ?? "", 
+            }
+          : null;
       })
     );
 
     return users.filter(
-      (u): u is { _id: Id<"users">; name: string } => u !== null
+      (u): u is { _id: Id<"users">; name: string; image: string} => u !== null
     );
   },
 });
+
