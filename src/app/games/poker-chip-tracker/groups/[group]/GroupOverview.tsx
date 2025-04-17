@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog"; // Make sure you have this
 import { useQuery, useConvex } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { Line } from "react-chartjs-2";
+import { Line, Bar } from "react-chartjs-2";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { User } from "lucide-react";
 import {
@@ -20,6 +20,7 @@ import {
   LinearScale,
   PointElement,
   LineElement,
+  BarElement,
   Title,
   Tooltip,
   Legend,
@@ -30,6 +31,7 @@ ChartJS.register(
   LinearScale,
   PointElement,
   LineElement,
+  BarElement,
   Title,
   Tooltip,
   Legend
@@ -133,6 +135,16 @@ export default function GroupOverview({
       fetchTransactions();
     }
   }, [members, chipTypes, memberTransactions, convex]);
+
+  function getColorForUser(userId: string): string {
+    let hash = 0;
+    for (let i = 0; i < userId.length; i++) {
+      hash = userId.charCodeAt(i) + ((hash << 5) - hash);
+      hash = hash & hash; // Convert to 32bit integer
+    }
+    const index = Math.abs(hash) % colorPalette.length;
+    return colorPalette[index];
+  }
 
   return (
     <section>
@@ -267,63 +279,140 @@ export default function GroupOverview({
             </tbody>
           </table>
 
+          <div className="mt-16">
+            <h3 className="text-lg font-medium mb-4">
+              Net Standings Leaderboard
+            </h3>
+            {(() => {
+              const getNet = (m: Doc<"pokerGroupMembers">) =>
+                chipTypes.reduce((sum, chip) => {
+                  const actual = m.chipCounts?.[chip._id] ?? 0;
+                  const distributed = m.distributedChipCounts?.[chip._id] ?? 0;
+                  return sum + (actual - distributed) * chip.value;
+                }, 0);
+
+              const leaderboard = [...members]
+                .map((m) => ({
+                  userId: m.userId,
+                  name: getUserName(m.userId),
+                  value: getNet(m),
+                }))
+                .sort((a, b) => b.value - a.value);
+
+              const first = leaderboard[0]?.userId;
+              const second = leaderboard[1]?.userId;
+              const third = leaderboard[2]?.userId;
+              const last = leaderboard[leaderboard.length - 1]?.userId;
+
+              const labelWithEmoji = (userId: string, name: string) => {
+                if (userId === first) return `👑\n${name}`;
+                if (userId === second) return `🥈\n${name}`;
+                if (userId === third) return `🥉\n${name}`;
+                if (userId === last) return `😢\n${name}`;
+                return name;
+              };
+
+              return (
+                <Bar
+                  data={{
+                    labels: leaderboard.map((p) => labelWithEmoji(p.userId, p.name)),
+                    datasets: [
+                      {
+                        label: "Net Value",
+                        data: leaderboard.map((p) => p.value),
+                        backgroundColor: leaderboard.map((p) =>
+                          getColorForUser(p.userId)
+                        ),
+                      },
+                    ],
+                  }}
+                  options={{
+                    responsive: true,
+                    plugins: {
+                      legend: { display: false },
+                      title: { display: false },
+                    },
+                    scales: {
+                      y: {
+                        beginAtZero: true,
+                        ticks: {
+                          callback: (value) => `$${value}`,
+                        },
+                      },
+                      x: {
+                        ticks: {
+                          callback: (val, index) => {
+                            const label = leaderboard[index];
+                            if (!label) return "";
+                            return labelWithEmoji(label.userId, label.name);
+                          },
+                        },
+                      },
+                    },
+                  }}
+                />
+              );
+            })()}
+          </div>
+
+
+
           {Object.keys(memberTransactions).length && chipTypes.length
             ? (() => {
-                const chipValueMap = Object.fromEntries(
-                  chipTypes.map((chip) => [chip._id, chip.value])
-                );
-
-                // Step 1: Collect all unique dates across all users
-                const allDatesSet = new Set<string>();
-
-                const perUserCumulative: {
-                  label: string;
-                  data: number[];
-                }[] = [];
-
-                members.forEach((member) => {
-                  const transactions = memberTransactions[member.userId] ?? [];
-                  const dailyTotals: Record<string, number> = {};
-
-                  transactions
-                    .sort((a, b) => a.timestamp - b.timestamp)
-                    .forEach((tx) => {
-                      const date = new Date(tx.timestamp).toLocaleDateString();
-                      const value = chipValueMap[tx.chipTypeId] ?? 1;
-                      dailyTotals[date] =
-                        (dailyTotals[date] ?? 0) + tx.amount * value;
-                      allDatesSet.add(date);
-                    });
-
-                  const sortedDates = Array.from(allDatesSet).sort(
-                    (a, b) => new Date(a).getTime() - new Date(b).getTime()
-                  );
-
-                  let runningTotal = 0;
-                  const cumulative = sortedDates.map((date) => {
-                    runningTotal += dailyTotals[date] ?? 0;
-                    return runningTotal;
-                  });
-
-                  perUserCumulative.push({
-                    label: getUserName(member.userId),
-                    data: cumulative,
-                  });
+              const chipValueMap = Object.fromEntries(
+                chipTypes.map((chip) => [chip._id, chip.value])
+              );
+              
+              // Step 1: Collect all unique dates across all users
+              const allDatesSet = new Set<string>();
+              members.forEach((member) => {
+                const transactions = memberTransactions[member.userId] ?? [];
+                transactions.forEach((tx) => {
+                  const date = new Date(tx.timestamp).toLocaleDateString();
+                  allDatesSet.add(date);
                 });
+              });
+              
+              // Step 2: Generate per-user forward-filled cumulative totals
+              const perUserCumulative: {
+                label: string;
+                data: number[];
+              }[] = [];
+              
+              members.forEach((member) => {
+                const transactions = (memberTransactions[member.userId] ?? []).sort(
+                  (a, b) => a.timestamp - b.timestamp
+                );
+              
+                // Aggregate values per day
+                const dailyChanges: Record<string, number> = {};
+                transactions.forEach((tx) => {
+                  const date = new Date(tx.timestamp).toLocaleDateString();
+                  const value = chipValueMap[tx.chipTypeId] ?? 1;
+                  dailyChanges[date] = (dailyChanges[date] ?? 0) + tx.amount * value;
+                });
+                const sortedDates = Array.from(allDatesSet).sort(
+                  (a, b) => new Date(a).getTime() - new Date(b).getTime()
+                );
+              
+                let runningTotal = 0;
+                const cumulative: number[] = [];
+                sortedDates.forEach((date) => {
+                  runningTotal += dailyChanges[date] ?? 0;
+                  cumulative.push(runningTotal);
+                });
+              
+                perUserCumulative.push({
+                  label: getUserName(member.userId),
+                  data: cumulative,
+                });
+              });
+              
 
                 const sortedDates = Array.from(allDatesSet).sort(
                   (a, b) => new Date(a).getTime() - new Date(b).getTime()
                 );
 
-                function getColorForUser(userId: string): string {
-                  let hash = 0;
-                  for (let i = 0; i < userId.length; i++) {
-                    hash = userId.charCodeAt(i) + ((hash << 5) - hash);
-                    hash = hash & hash; // Convert to 32bit integer
-                  }
-                  const index = Math.abs(hash) % colorPalette.length;
-                  return colorPalette[index];
-                }
 
                 return (
                   <div className="mt-12">
