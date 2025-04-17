@@ -16,6 +16,9 @@ import {
   Clock,
   ArrowRight,
 } from "lucide-react";
+import Image from "next/image"
+
+import HeroImage from "../../public/assets/HeroImage.png"
 
 export default function LandingPage() {
   return (
@@ -44,15 +47,16 @@ export default function LandingPage() {
               </div>
             </div>
             <div className="flex-1 relative">
-              <div className="aspect-square max-w-md mx-auto relative">
-                <div className="absolute inset-0 bg-primary/10 rounded-lg transform rotate-3"></div>
-                <img
-                  src="/placeholder.svg?height=400&width=400"
-                  alt="Friends playing board games online"
-                  className="relative rounded-lg shadow-lg w-full h-full object-cover"
+              <div className="w-full max-w-3xl aspect-video mx-auto relative">
+                <Image
+                  src={HeroImage}
+                  alt="Players enjoying board games online"
+                  fill
+                  className="object-cover rounded-lg"
                 />
               </div>
             </div>
+
           </div>
         </div>
       </section>
