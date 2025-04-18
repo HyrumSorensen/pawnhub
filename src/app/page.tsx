@@ -19,6 +19,8 @@ import {
 import Image from "next/image"
 
 import HeroImage from "../../public/assets/HeroImage.png"
+import quoridorImage from "../../public/assets/quoridor.png"
+import pokerTrackerImage from "../../public/assets/poker-tracker-image.png"
 
 export default function LandingPage() {
   return (
@@ -130,80 +132,78 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Popular Games Section */}
-      <section className="py-20 px-4 bg-muted/50">
-        <div className="container mx-auto max-w-6xl">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold mb-4">Popular Games</h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
-              Discover our most-played games and challenge your friends to a
-              match.
-            </p>
-          </div>
+{/* Popular Games Section */}
+<section className="py-20 px-4 bg-muted/50">
+  <div className="container mx-auto max-w-6xl">
+    <div className="text-center mb-16">
+      <h2 className="text-3xl font-bold mb-4">Popular Games</h2>
+      <p className="text-muted-foreground max-w-2xl mx-auto">
+        Explore the games we've crafted and challenge your friends to a match.
+      </p>
+    </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[
-              { name: "Chess", players: "2 players", category: "Strategy" },
-              { name: "Monopoly", players: "2-6 players", category: "Family" },
-              { name: "Catan", players: "3-4 players", category: "Strategy" },
-              { name: "Uno", players: "2-10 players", category: "Card Game" },
-              {
-                name: "Scrabble",
-                players: "2-4 players",
-                category: "Word Game",
-              },
-              { name: "Risk", players: "2-6 players", category: "Strategy" },
-              {
-                name: "Ticket to Ride",
-                players: "2-5 players",
-                category: "Family",
-              },
-              {
-                name: "Carcassonne",
-                players: "2-5 players",
-                category: "Tile Game",
-              },
-            ].map((game, index) => (
-              <Card
-                key={index}
-                className="overflow-hidden group cursor-pointer hover:shadow-md transition-all"
-              >
-                <div className="aspect-[4/3] relative">
-                  <img
-                    src={`/placeholder.svg?height=300&width=400&text=${game.name}`}
-                    alt={game.name}
-                    className="object-cover w-full h-full"
-                  />
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <Button variant="secondary" size="sm">
-                      Play Now
-                    </Button>
-                  </div>
-                </div>
-                <CardContent className="p-4">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="font-semibold">{game.name}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {game.players}
-                      </p>
-                    </div>
-                    <Badge variant="outline">{game.category}</Badge>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 gap-6">
+      {[
+        {
+          name: "Quoridor",
+          players: "2-4 players",
+          category: "Strategy",
+          href: "/games/quoridor",
+          image: quoridorImage,
+        },
+        {
+          name: "Pawnhub Poker Tracker",
+          players: "2+ players",
+          category: "Poker Tools",
+          href: "/games/poker-chip-tracker",
+          image: pokerTrackerImage,
+        },
+      ].map((game, index) => (
+        <Card
+          key={index}
+          className="overflow-hidden group cursor-pointer hover:shadow-md transition-shadow"
+        >
+          <Link href={game.href}>
+            <div className="relative w-full h-48">
+              <Image
+                src={game.image}
+                alt={game.name}
+                fill
+                className="object-cover w-full h-full"
+                sizes="(max-width: 768px) 100vw, 50vw"
+              />
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                <Button variant="secondary" size="sm">
+                  Play Now
+                </Button>
+              </div>
+            </div>
+          </Link>
+          <CardContent className="p-4">
+            <div className="flex justify-between items-start">
+              <div>
+                <h3 className="font-semibold">{game.name}</h3>
+                <p className="text-sm text-muted-foreground">{game.players}</p>
+              </div>
+              <Badge variant="outline">{game.category}</Badge>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
 
-          <div className="text-center mt-12">
-            <Button variant="outline" asChild>
-              <Link href="/games">
-                View All Games <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
-            </Button>
-          </div>
-        </div>
-      </section>
+    <div className="text-center mt-12">
+      <Button variant="outline" asChild>
+        <Link href="/games">
+          View All Games <ArrowRight className="ml-2 h-4 w-4" />
+        </Link>
+      </Button>
+    </div>
+  </div>
+</section>
+
+
+
 
       {/* Leaderboards Preview Section */}
       <section className="py-20 px-4">

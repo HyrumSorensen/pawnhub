@@ -55,20 +55,22 @@ export default function GroupPage() {
   const handleSaveMemberChips = async (userId: Id<"users">) => {
     const userEdits = editedChipCounts[userId];
     if (!userEdits || !chipTypes) return;
-
-    for (const chip of chipTypes) {
-      const newCount = parseInt(userEdits[chip._id] ?? "0");
-      const member = members?.find((m) => m.userId === userId);
-      const current = member?.chipCounts?.[chip._id] ?? 0;
-
+  
+    const member = members?.find((m) => m.userId === userId);
+    if (!member) return;
+  
+    for (const chipId in userEdits) {
+      const newCount = parseInt(userEdits[chipId]);
+      const current = member.chipCounts?.[chipId] ?? 0;
+  
       if (newCount !== current) {
         const diff = newCount - current;
-
-        await updateChipCount({ groupId, userId, chipTypeId: chip._id, amount: diff });
+  
+        await updateChipCount({ groupId, userId, chipTypeId: chipId as Id<"pokerChipTypes">, amount: diff });
         await recordTransaction({
           groupId,
           userId,
-          chipTypeId: chip._id,
+          chipTypeId: chipId as Id<"pokerChipTypes">,
           transactionType: diff > 0 ? "admin-add" : "admin-remove",
           amount: diff,
           timestamp: Date.now(),
@@ -76,13 +78,14 @@ export default function GroupPage() {
         });
       }
     }
-
+  
     setDirtyMembers((prev) => {
       const newSet = new Set(prev);
       newSet.delete(userId);
       return newSet;
     });
   };
+  
 
   useEffect(() => {
     if (chipCounts && chipTypes) {

@@ -113,85 +113,96 @@ export default function AdminPortal({
 
         {chipTypes?.length && members?.length ? (
           <div className="overflow-x-auto">
-            <table className="table-auto w-full border border-gray-300 text-sm">
-              <thead>
-                <tr className="bg-gray-100">
-                  <th className="px-4 py-2 border border-gray-300 text-left">User</th>
-                  {chipTypes.map((chip) => (
-                    <th key={chip._id} className="px-4 py-2 border border-gray-300 text-left">
-                      {chip.name}
-                    </th>
-                  ))}
-                  <th className="px-4 py-2 border border-gray-300 text-left">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {members.map((member) => (
-                  <tr key={member._id}>
-                    <td className="px-4 py-2 border border-gray-300 text-left">
-                      {getUserName(member.userId)}
-                    </td>
-
-                    {chipTypes.map((chip) => {
-                      const distCount = member.distributedChipCounts?.[chip._id] ?? 0;
-                      return (
-                        <td key={chip._id} className="px-2 py-2 border border-gray-300 text-center">
-                          <input
-                            type="number"
-                            className="w-16 px-1 py-0.5 border rounded text-center"
-                            value={
-                              editedChipCounts[member.userId]?.[chip._id] ??
-                              distCount.toString()
-                            }
-                            onChange={(e) =>
-                              handleEditChip(member.userId, chip._id, e.target.value)
-                            }
-                          />
-                        </td>
-                      );
-                    })}
-
-                    <td className="px-4 py-2 border border-gray-300 text-center">
-                      {dirtyMembers.has(member.userId) && (
-                        <Button
-                          size="sm"
-                          onClick={async () => {
-                            const userEdits = editedChipCounts[member.userId];
-                            if (!userEdits || !chipTypes) return;
-                            for (const chipTypeIdStr in userEdits) {
-                                const chipTypeId = chipTypeIdStr as Id<"pokerChipTypes">;
-                                const newCount = parseInt(userEdits[chipTypeId] ?? "0");
-                                const current = member.distributedChipCounts?.[chipTypeId] ?? 0;
-                              
-                                if (newCount !== current) {
-                                  const diff = newCount - current;
-                              
-                                  await adjustDistributedChips({
-                                    groupId,
-                                    userId: member.userId,
-                                    chipTypeId,
-                                    amount: diff,
-                                  });
-                                }
-                              }
-                              
-                              
-
-                            setDirtyMembers((prev) => {
-                              const newSet = new Set(prev);
-                              newSet.delete(member.userId);
-                              return newSet;
-                            });
-                          }}
-                        >
-                          Save
-                        </Button>
-                      )}
-                    </td>
-                  </tr>
+          <table className="table-auto w-full border border-gray-300 text-sm">
+            <thead>
+              <tr className="bg-gray-100">
+                <th className="px-4 py-2 border border-gray-300 text-left">User</th>
+                {chipTypes.map((chip) => (
+                  <th key={chip._id} className="px-4 py-2 border border-gray-300 text-left">
+                    {chip.name}
+                  </th>
                 ))}
-              </tbody>
-            </table>
+                <th className="px-4 py-2 border border-gray-300 text-left">Total</th>
+                <th className="px-4 py-2 border border-gray-300 text-left">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {members.map((member) => (
+                <tr key={member._id}>
+                  <td className="px-4 py-2 border border-gray-300 text-left">
+                    {getUserName(member.userId)}
+                  </td>
+
+                  {chipTypes.map((chip) => {
+                    const distCount = member.distributedChipCounts?.[chip._id] ?? 0;
+                    return (
+                      <td key={chip._id} className="px-2 py-2 border border-gray-300 text-center">
+                        <input
+                          type="number"
+                          className="w-16 px-1 py-0.5 border rounded text-center"
+                          value={
+                            editedChipCounts[member.userId]?.[chip._id] ??
+                            distCount.toString()
+                          }
+                          onChange={(e) =>
+                            handleEditChip(member.userId, chip._id, e.target.value)
+                          }
+                        />
+                      </td>
+                    );
+                  })}
+
+                  {/* ✅ New Total column */}
+                  <td className="px-2 py-2 border border-gray-300 text-center font-medium">
+                    {(() => {
+                      const total = chipTypes.reduce((sum, chip) => {
+                        const count = member.distributedChipCounts?.[chip._id] ?? 0;
+                        return sum + count * chip.value;
+                      }, 0);
+                      return total;
+                    })()}
+                  </td>
+
+                  <td className="px-4 py-2 border border-gray-300 text-center">
+                    {dirtyMembers.has(member.userId) && (
+                      <Button
+                        size="sm"
+                        onClick={async () => {
+                          const userEdits = editedChipCounts[member.userId];
+                          if (!userEdits || !chipTypes) return;
+                          for (const chipTypeIdStr in userEdits) {
+                            const chipTypeId = chipTypeIdStr as Id<"pokerChipTypes">;
+                            const newCount = parseInt(userEdits[chipTypeId] ?? "0");
+                            const current = member.distributedChipCounts?.[chipTypeId] ?? 0;
+
+                            if (newCount !== current) {
+                              const diff = newCount - current;
+
+                              await adjustDistributedChips({
+                                groupId,
+                                userId: member.userId,
+                                chipTypeId,
+                                amount: diff,
+                              });
+                            }
+                          }
+
+                          setDirtyMembers((prev) => {
+                            const newSet = new Set(prev);
+                            newSet.delete(member.userId);
+                            return newSet;
+                          });
+                        }}
+                      >
+                        Save
+                      </Button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
           </div>
         ) : (
           <p>No data available yet.</p>

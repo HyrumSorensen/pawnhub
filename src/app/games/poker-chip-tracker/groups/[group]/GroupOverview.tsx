@@ -156,9 +156,7 @@ export default function GroupOverview({
           <table className="table-auto w-full border border-gray-300 text-sm">
             <thead>
               <tr className="bg-gray-100">
-                <th className="px-4 py-2 border border-gray-300 text-left">
-                  User
-                </th>
+                <th className="px-4 py-2 border border-gray-300 text-left">User</th>
                 {chipTypes.map((chip) => (
                   <th
                     key={chip._id}
@@ -167,117 +165,126 @@ export default function GroupOverview({
                     {chip.name}
                   </th>
                 ))}
-                <th className="px-4 py-2 border border-gray-300 text-left">
-                  Net
-                </th>
+                <th className="px-4 py-2 border border-gray-300 text-left">Total</th>
+                <th className="px-4 py-2 border border-gray-300 text-left">Net</th>
                 {isAdmin && (
-                  <th className="px-4 py-2 border border-gray-300 text-left">
-                    Actions
-                  </th>
+                  <th className="px-4 py-2 border border-gray-300 text-left">Actions</th>
                 )}
               </tr>
             </thead>
             <tbody>
-            {[...members]
-              .sort((a, b) => {
-                const getNet = (m: Doc<"pokerGroupMembers">) =>
-                  chipTypes.reduce((sum, chip) => {
-                    const actual = m.chipCounts?.[chip._id] ?? 0;
-                    const distributed = m.distributedChipCounts?.[chip._id] ?? 0;
-                    return sum + (actual - distributed) * chip.value;
-                  }, 0);
+              {[...members]
+                .sort((a, b) => {
+                  const getNet = (m: Doc<"pokerGroupMembers">) =>
+                    chipTypes.reduce((sum, chip) => {
+                      const actual = m.chipCounts?.[chip._id] ?? 0;
+                      const distributed = m.distributedChipCounts?.[chip._id] ?? 0;
+                      return sum + (actual - distributed) * chip.value;
+                    }, 0);
+                  return getNet(b) - getNet(a);
+                })
+                .map((member) => (
+                  <tr key={member._id}>
+                    <td
+                      className="px-4 py-2 border border-gray-300 text-left cursor-pointer text-blue-600 hover:underline"
+                      onClick={() => {
+                        setSelectedUserId(member.userId);
+                        setShowModal(true);
+                      }}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={getUserImage(member.userId)} />
+                          <AvatarFallback>
+                            <User className="h-4 w-4" />
+                          </AvatarFallback>
+                        </Avatar>
+                        <span>{getUserName(member.userId)}</span>
+                      </div>
+                    </td>
 
-                return getNet(b) - getNet(a);
-              })
-              .map((member) => (
-                <tr key={member._id}>
-                  <td
-                    className="px-4 py-2 border border-gray-300 text-left cursor-pointer text-blue-600 hover:underline"
-                    onClick={() => {
-                      setSelectedUserId(member.userId);
-                      setShowModal(true);
-                    }}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Avatar className="h-8 w-8">
-                        <AvatarImage src={getUserImage(member.userId)} />
-                        <AvatarFallback>
-                          <User className="h-4 w-4" />
-                        </AvatarFallback>
-                      </Avatar>
-                      <span>{getUserName(member.userId)}</span>
-                    </div>
-                  </td>
-
-                  {chipTypes.map((chip) => {
-                    const current = member.chipCounts?.[chip._id] ?? 0;
-                    if (!isAdmin) {
+                    {chipTypes.map((chip) => {
+                      const current = member.chipCounts?.[chip._id] ?? 0;
+                      if (!isAdmin) {
+                        return (
+                          <td
+                            key={chip._id}
+                            className="px-4 py-2 border border-gray-300 text-center"
+                          >
+                            {current}
+                          </td>
+                        );
+                      }
                       return (
                         <td
                           key={chip._id}
-                          className="px-4 py-2 border border-gray-300 text-center"
+                          className="px-2 py-2 border border-gray-300 text-center"
                         >
-                          {current}
+                          <input
+                            type="number"
+                            className="w-16 px-1 py-0.5 border rounded text-center"
+                            value={
+                              editedChipCounts[member.userId]?.[chip._id] ??
+                              current.toString()
+                            }
+                            onChange={(e) =>
+                              handleEditChip(member.userId, chip._id, e.target.value)
+                            }
+                          />
                         </td>
                       );
-                    }
-                    return (
-                      <td
-                        key={chip._id}
-                        className="px-2 py-2 border border-gray-300 text-center"
-                      >
-                        <input
-                          type="number"
-                          className="w-16 px-1 py-0.5 border rounded text-center"
-                          value={
-                            editedChipCounts[member.userId]?.[chip._id] ??
-                            current.toString()
-                          }
-                          onChange={(e) =>
-                            handleEditChip(
-                              member.userId,
-                              chip._id,
-                              e.target.value
-                            )
-                          }
-                        />
-                      </td>
-                    );
-                  })}
-                  <td className="px-2 py-2 border border-gray-300 text-center font-medium">
-                    {(() => {
-                      const netTotal = chipTypes.reduce((sum, chip) => {
-                        const actual = member.chipCounts?.[chip._id] ?? 0;
-                        const distributed =
-                          member.distributedChipCounts?.[chip._id] ?? 0;
-                        return sum + (actual - distributed) * chip.value;
-                      }, 0);
-                      return (
-                        <span
-                          className={
-                            netTotal >= 0 ? "text-green-600" : "text-red-600"
-                          }
-                        >
-                          {netTotal > 0 ? "+" : ""}
-                          {netTotal}
-                        </span>
-                      );
-                    })()}
-                  </td>
+                    })}
 
-                  {isAdmin && (
-                    <td className="px-4 py-2 border border-gray-300 text-center">
-                      {dirtyMembers.has(member.userId) && (
-                        <Button size="sm" onClick={() => handleSaveMemberChips(member.userId)}>
-                          Save
-                        </Button>
-                      )}
+                    {/* Total column */}
+                    <td className="px-2 py-2 border border-gray-300 text-center font-medium">
+                      {(() => {
+                        const total = chipTypes.reduce((sum, chip) => {
+                          const count = member.chipCounts?.[chip._id] ?? 0;
+                          return sum + count * chip.value;
+                        }, 0);
+                        return total;
+                      })()}
                     </td>
-                  )}
-                </tr>
-              ))}
+
+                    {/* Net column */}
+                    <td className="px-2 py-2 border border-gray-300 text-center font-medium">
+                      {(() => {
+                        const netTotal = chipTypes.reduce((sum, chip) => {
+                          const actual = member.chipCounts?.[chip._id] ?? 0;
+                          const distributed =
+                            member.distributedChipCounts?.[chip._id] ?? 0;
+                          return sum + (actual - distributed) * chip.value;
+                        }, 0);
+                        return (
+                          <span
+                            className={
+                              netTotal >= 0 ? "text-green-600" : "text-red-600"
+                            }
+                          >
+                            {netTotal > 0 ? "+" : ""}
+                            {netTotal}
+                          </span>
+                        );
+                      })()}
+                    </td>
+
+                    {isAdmin && (
+                      <td className="px-4 py-2 border border-gray-300 text-center">
+                        {dirtyMembers.has(member.userId) && (
+                          <Button
+                            size="sm"
+                            onClick={() => handleSaveMemberChips(member.userId)}
+                          >
+                            Save
+                          </Button>
+                        )}
+                      </td>
+                    )}
+                  </tr>
+                ))}
             </tbody>
           </table>
+
 
           <div className="mt-16">
             <h3 className="text-lg font-medium mb-4">
@@ -354,6 +361,111 @@ export default function GroupOverview({
               );
             })()}
           </div>
+
+
+          <div className="mt-12">
+  <h3 className="text-lg font-medium mb-4">
+    Group Net Value History
+  </h3>
+  {(() => {
+    const chipValueMap = Object.fromEntries(
+      chipTypes.map((chip) => [chip._id, chip.value])
+    );
+
+    // Step 1: Collect all unique dates across all users
+    const allDatesSet = new Set<string>();
+    members.forEach((member) => {
+      const transactions = memberTransactions[member.userId] ?? [];
+      transactions.forEach((tx) => {
+        const date = new Date(tx.timestamp).toLocaleDateString();
+        allDatesSet.add(date);
+      });
+    });
+
+    const sortedDates = Array.from(allDatesSet).sort(
+      (a, b) => new Date(a).getTime() - new Date(b).getTime()
+    );
+
+    // Step 2: Build cumulative net value over time for each user
+    const perUserNetHistory: {
+      label: string;
+      data: number[];
+    }[] = [];
+
+    members.forEach((member) => {
+      const transactions = (memberTransactions[member.userId] ?? []).sort(
+        (a, b) => a.timestamp - b.timestamp
+      );
+
+      // Track running chip counts
+      const chipCounts: Record<string, number> = {};
+      const distributed = member.distributedChipCounts ?? {};
+
+      const dailyNetTotals: Record<string, number> = {};
+
+      transactions.forEach((tx) => {
+        const date = new Date(tx.timestamp).toLocaleDateString();
+        chipCounts[tx.chipTypeId] =
+          (chipCounts[tx.chipTypeId] ?? 0) + tx.amount;
+
+        // Calculate net value at this point
+        const net = chipTypes.reduce((sum, chip) => {
+          const actual = chipCounts[chip._id] ?? 0;
+          const dist = distributed[chip._id] ?? 0;
+          return sum + (actual - dist) * chip.value;
+        }, 0);
+
+        dailyNetTotals[date] = net;
+      });
+
+      let lastKnownNet = 0;
+      const cumulativeNet: number[] = [];
+
+      sortedDates.forEach((date) => {
+        if (dailyNetTotals[date] !== undefined) {
+          lastKnownNet = dailyNetTotals[date];
+        }
+        cumulativeNet.push(lastKnownNet);
+      });
+
+      perUserNetHistory.push({
+        label: getUserName(member.userId),
+        data: cumulativeNet,
+      });
+    });
+
+    return (
+      <Line
+        data={{
+          labels: sortedDates,
+          datasets: perUserNetHistory.map((userData) => ({
+            ...userData,
+            borderColor: getColorForUser(userData.label),
+            pointBackgroundColor: getColorForUser(userData.label),
+            pointBorderColor: getColorForUser(userData.label),
+            backgroundColor: "transparent",
+            tension: 0,
+          })),
+        }}
+        options={{
+          responsive: true,
+          plugins: {
+            legend: { display: true },
+            title: { display: false },
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                callback: (value) => `$${value}`,
+              },
+            },
+          },
+        }}
+      />
+    );
+  })()}
+</div>
 
 
 
@@ -452,6 +564,7 @@ export default function GroupOverview({
               })()
             : null}
 
+            
           <Dialog open={showModal} onOpenChange={setShowModal}>
             <DialogContent className="max-w-3xl">
               <DialogHeader>
