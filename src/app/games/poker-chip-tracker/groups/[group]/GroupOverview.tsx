@@ -368,9 +368,9 @@ export default function GroupOverview({
     Group Net Value History
   </h3>
   {(() => {
-    const chipValueMap = Object.fromEntries(
-      chipTypes.map((chip) => [chip._id, chip.value])
-    );
+    // const chipValueMap = Object.fromEntries(
+    //   chipTypes.map((chip) => [chip._id, chip.value])
+    // );
 
     // Step 1: Collect all unique dates across all users
     const allDatesSet = new Set<string>();

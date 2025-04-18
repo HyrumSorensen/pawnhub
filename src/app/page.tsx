@@ -138,7 +138,7 @@ export default function LandingPage() {
     <div className="text-center mb-16">
       <h2 className="text-3xl font-bold mb-4">Popular Games</h2>
       <p className="text-muted-foreground max-w-2xl mx-auto">
-        Explore the games we've crafted and challenge your friends to a match.
+        Explore the games weve crafted and challenge your friends to a match.
       </p>
     </div>
 

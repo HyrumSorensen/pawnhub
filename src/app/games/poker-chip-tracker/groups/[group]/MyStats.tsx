@@ -182,7 +182,7 @@ export default function MyStats({
       sorted.forEach((tx) => {
         const date = new Date(tx.timestamp).toLocaleDateString();
 
-        const value = chipValueMap[tx.chipTypeId] ?? 1;
+        // const value = chipValueMap[tx.chipTypeId] ?? 1;
         const prev = chipCountMap[tx.chipTypeId] ?? 0;
         chipCountMap[tx.chipTypeId] = prev + tx.amount;
 
