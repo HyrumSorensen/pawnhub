@@ -164,9 +164,9 @@ export default function MyStats({
     <h3 className="text-lg font-medium mb-2">Net Chip Value Over Time</h3>
 
     {(() => {
-      const chipValueMap = Object.fromEntries(
-        chipTypes.map((chip) => [chip._id, chip.value])
-      );
+      // const chipValueMap = Object.fromEntries(
+      //   chipTypes.map((chip) => [chip._id, chip.value])
+      // );
 
       const netValueHistory: Record<string, number> = {};
 
