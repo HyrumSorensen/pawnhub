@@ -41,6 +41,19 @@ export default function Games() {
         </Card>
         <Card className="w-full max-w-md">
           <CardHeader>
+            <CardTitle>Tic Tac Toe</CardTitle>
+            <CardDescription>
+              A classic game of Tic Tac Toe for 2 players
+            </CardDescription>
+            <CardContent>
+              <Button variant="outline" className="w-full" asChild>
+                <Link href="/games/tic-tac-toe">Play</Link>
+              </Button>
+            </CardContent>
+          </CardHeader>
+        </Card>
+        <Card className="w-full max-w-md">
+          <CardHeader>
             <CardTitle>Poker Chip Tracker</CardTitle>
             <CardDescription>
               Keep track of your group&apos;s poker chips.
