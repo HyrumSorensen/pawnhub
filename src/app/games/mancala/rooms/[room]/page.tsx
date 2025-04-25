@@ -30,11 +30,11 @@ export default function MancalaRoomPage() {
   // Initialize engine
   useEffect(() => {
     if (!userId) return;
-  
+
     const eng = new MancalaGameEngine();
     setEngine(eng);
     setLocalState(eng.getState());
-  
+
     (async () => {
       const res = await createGame({
         room: roomId,
@@ -42,23 +42,22 @@ export default function MancalaRoomPage() {
         initialState: eng.serializeState(),
         createdAt: Date.now(),
       });
-  
+
       const parsed = res && JSON.parse(res);
       if (parsed?.error) {
         await joinGame({ room: roomId, player: userId });
       }
     })();
-  
+
     const handler = () => {
       setLocalState(eng.getState());
     };
     eventBus.on("gameStateUpdated", handler);
-  
+
     return () => {
       eventBus.off("gameStateUpdated", handler);
     };
   }, [createGame, joinGame, roomId, userId]);
-  
 
   // Sync remote state to engine
   useEffect(() => {
@@ -107,41 +106,61 @@ export default function MancalaRoomPage() {
   const board = localState.board;
 
   return (
-    <main className="flex flex-col gap-4 p-4 items-center">
-      <h1 className="text-3xl font-bold mb-2">Mancala</h1>
-
-      <div className="flex flex-col gap-4 items-center">
-        {/* Upper row (Player 2 pits) */}
-        <div className="flex flex-row gap-2">
-            {[12, 11, 10, 9, 8, 7].map((index) => (
-                <Pit
-                key={`p2-${index}`}
-                count={board[index]}
-                onClick={() => handleMove(index)}
-                isClickable={localState.currentPlayer === 2}
-                />
-            ))}
-            </div>
-
-
-        {/* Store row */}
-        <div className="flex flex-row items-center gap-2">
-          <Store label="P2" count={board[13]} />
-          <div className="flex gap-2">{/* space for center or arrow */}</div>
-          <Store label="P1" count={board[6]} />
-        </div>
-
-        {/* Lower row (Player 1 pits) */}
-        <div className="flex flex-row gap-2">
-          {board.slice(0, 6).map((count, i) => (
-            <Pit
-              key={`p1-${i}`}
-              count={count}
-              onClick={() => handleMove(i)}
-              isClickable={localState.currentPlayer === 1}
+    <main className="flex gap-12 p-4 justify-center">
+      <div className="flex flex-col items-center justify-center">
+        <div className="bg-white/90 p-4 rounded-lg shadow-md mb-4">
+          <h3 className="text-lg font-semibold mb-2">Current Turn</h3>
+          <div className="flex items-center gap-2">
+            <div
+              className={`w-3 h-3 rounded-full ${localState.currentPlayer === 1 ? "bg-blue-500" : "bg-gray-300"}`}
             />
-          ))}
+            <span className="font-medium">
+              Player {localState.currentPlayer}
+            </span>
+          </div>
+          {getGame && (
+            <div className="text-sm text-gray-600 mt-2">
+              {localState.currentPlayer === 1
+                ? userId === getGame.player1
+                  ? "Your turn"
+                  : "Opponent's turn"
+                : userId === getGame.player2
+                  ? "Your turn"
+                  : "Opponent's turn"}
+            </div>
+          )}
         </div>
+      </div>
+      <div
+        className={`flex gap-4 items-center bg-[url('/assets/wood-bg.svg')] bg-cover bg-center h-full py-4 px-8 rounded-xl`}
+      >
+        <Store label="P2" count={board[13]} labelPos="bottom" />
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-row gap-2">
+            {board.slice(7, 13).map((count, i) => (
+              <Pit
+                key={`p2-${i}`}
+                count={count}
+                onClick={() => handleMove(i)}
+                isClickable={localState.currentPlayer === 2}
+                labelPos="bottom"
+              />
+            ))}
+          </div>
+          <div className="p-2"></div>
+          <div className="flex flex-row gap-2">
+            {board.slice(0, 6).map((count, i) => (
+              <Pit
+                key={`p1-${i}`}
+                count={count}
+                onClick={() => handleMove(i)}
+                isClickable={localState.currentPlayer === 1}
+                labelPos="top"
+              />
+            ))}
+          </div>
+        </div>
+        <Store label="P1" count={board[6]} labelPos="top" />
       </div>
 
       <ChatBox room={roomId} playerId={userId!} user={user!} />
@@ -153,43 +172,101 @@ function Pit({
   count,
   onClick,
   isClickable,
+  labelPos,
 }: {
   count: number;
   onClick: () => void;
   isClickable: boolean;
+  labelPos: "top" | "bottom";
 }) {
   return (
-    <button
-      onClick={onClick}
-      disabled={!isClickable || count === 0}
-      className="relative w-16 h-16 bg-amber-100 rounded-full shadow-md hover:brightness-105 transition"
-    >
-      <Image
-        src="/assets/mancala-pit.png"
-        alt="Pit"
-        fill
-        className="object-cover rounded-full opacity-90"
-      />
-      <span className="relative z-10 font-semibold text-lg">{count}</span>
-    </button>
+    <div className="flex flex-col items-center gap-1">
+      {labelPos === "top" && (
+        <span className="relative z-10 font-semibold text-lg">{count}</span>
+      )}
+      <button
+        onClick={onClick}
+        disabled={!isClickable || count === 0}
+        className="relative w-24 h-24 bg-amber-100 rounded-full shadow-md hover:brightness-105 transition"
+      >
+        {count === 0 ? (
+          <Image
+            src="/assets/pit-empty.svg"
+            alt="Pit"
+            fill
+            className="object-cover rounded-full opacity-90"
+          />
+        ) : count > 4 ? (
+          <Image
+            src={`/assets/pit-4.svg`}
+            alt="Pit"
+            fill
+            className="object-cover rounded-full opacity-90"
+          />
+        ) : (
+          <Image
+            src={`/assets/pit-${count}.svg`}
+            alt="Pit"
+            fill
+            className="object-cover rounded-full opacity-90"
+          />
+        )}
+      </button>
+      {labelPos === "bottom" && (
+        <span className="relative z-10 font-semibold text-lg">{count}</span>
+      )}
+    </div>
   );
 }
 
-function Store({ label, count }: { label: string; count: number }) {
+function Store({
+  label,
+  count,
+  labelPos,
+}: {
+  label: string;
+  count: number;
+  labelPos: "top" | "bottom";
+}) {
   return (
     <div className="flex flex-col items-center gap-1">
-      <div className="w-16 h-32 bg-yellow-200 rounded-lg shadow-inner relative">
-        <Image
-          src="/assets/mancala-store.png"
-          alt={`${label} Store`}
-          fill
-          className="object-cover rounded-lg opacity-90"
-        />
-        <span className="absolute inset-0 flex items-center justify-center text-xl font-bold text-gray-800">
-          {count}
-        </span>
+      {labelPos === "top" && (
+        <span className="text-sm font-medium">{label}</span>
+      )}
+      {labelPos === "bottom" && (
+        <span className="relative z-10 font-semibold text-lg">{count}</span>
+      )}
+
+      <div className="w-24 h-72 bg-yellow-200 rounded-xl shadow-inner relative">
+        {count === 0 ? (
+          <Image
+            src="/assets/store-empty.svg"
+            alt={`${label} Store`}
+            fill
+            className="object-cover rounded-xl opacity-90"
+          />
+        ) : count > 4 ? (
+          <Image
+            src="/assets/store-4.svg"
+            alt={`${label} Store`}
+            fill
+            className="object-cover rounded-xl opacity-90"
+          />
+        ) : (
+          <Image
+            src={`/assets/store-${count}.svg`}
+            alt={`${label} Store`}
+            fill
+            className="object-cover rounded-xl opacity-90"
+          />
+        )}
       </div>
-      <span className="text-sm font-medium text-gray-600">{label}</span>
+      {labelPos === "bottom" && (
+        <span className="text-sm font-medium">{label}</span>
+      )}
+      {labelPos === "top" && (
+        <span className="relative z-10 font-semibold text-lg">{count}</span>
+      )}
     </div>
   );
 }
