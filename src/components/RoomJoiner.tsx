@@ -23,7 +23,8 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 
 
-export default function RoomJoiner({ path }: { path: string }) {
+export default function RoomJoiner({ path, cardTitle }: { path: string; cardTitle?: string }) {
+
   const [roomId, setRoomId] = useState("");
   const game = useQuery(
     api.games.getGame,
@@ -59,7 +60,7 @@ export default function RoomJoiner({ path }: { path: string }) {
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold text-center flex items-center justify-center">
             <MdOutlineGroup className="inline-block mr-2 text-4xl" />
-            Quoridor
+            {cardTitle}
           </CardTitle>
           <CardDescription className="text-center">
             Enter a room ID to join a game

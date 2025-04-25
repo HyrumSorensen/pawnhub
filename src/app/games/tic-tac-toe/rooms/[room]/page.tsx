@@ -62,6 +62,7 @@ export default function TicTacToeRoom() {
           player1: userId,
           initialState: game.serializeState(),
           createdAt: Date.now(),
+          game: "tic-tac-toe"
         });
 
         if (res) {

@@ -87,6 +87,7 @@ export default function HomePage() {
           player1: userId,
           initialState: game.serializeState(),
           createdAt: Date.now(),
+          game: "quoridor"
         });
 
         if (res) {

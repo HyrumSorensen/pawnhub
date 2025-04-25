@@ -27,6 +27,10 @@ export default function MancalaRoomPage() {
   const [engine, setEngine] = useState<MancalaGameEngine | null>(null);
   const [localState, setLocalState] = useState<MancalaGameState | null>(null);
 
+  const [showEndScreen, setShowEndScreen] = useState(false);
+const [didWin, setDidWin] = useState<boolean | null>(null);
+
+
   // Initialize engine
   useEffect(() => {
     if (!userId) return;
@@ -41,6 +45,7 @@ export default function MancalaRoomPage() {
         player1: userId,
         initialState: eng.serializeState(),
         createdAt: Date.now(),
+        game: "mancala"
       });
 
       const parsed = res && JSON.parse(res);
@@ -71,10 +76,15 @@ export default function MancalaRoomPage() {
         setLocalState(parsed);
         if (parsed.gameOver) {
           setGameCompleted({ room: roomId });
-          const winMsg =
-            parsed.winner === 1 ? "Player 1 wins!" : "Player 2 wins!";
-          alert(winMsg);
+        
+          const iWon =
+            (parsed.winner === 1 && userId === getGame?.player1) ||
+            (parsed.winner === 2 && userId === getGame?.player2);
+        
+          setDidWin(iWon);
+          setShowEndScreen(true);
         }
+        
       } catch (err) {
         console.error("Bad state parse:", err);
       }
@@ -100,6 +110,22 @@ export default function MancalaRoomPage() {
       });
     }
   }
+  async function handlePlayAgain() {
+    if (!engine || !userId) return;
+  
+    engine.resetGame(); // <-- correct method name
+    setLocalState(engine.getState());
+  
+    await updateGameState({
+      room: roomId,
+      state: engine.serializeState(),
+    });
+  
+    setShowEndScreen(false);
+    setDidWin(null);
+  }
+  
+  
 
   if (!localState) return <div className="p-4 text-center">Loading...</div>;
 
@@ -132,7 +158,7 @@ export default function MancalaRoomPage() {
         </div>
       </div>
       <div
-        className={`flex gap-4 items-center bg-[url('/assets/wood-bg.svg')] bg-cover bg-center h-full py-4 px-8 rounded-xl`}
+        className={`flex gap-4 items-center bg-[url('/assets/mancala/wood-bg.svg')] bg-cover bg-center h-full py-4 px-8 rounded-xl`}
       >
         <Store label="P2" count={board[13]} labelPos="bottom" />
         <div className="flex flex-col gap-2">
@@ -164,6 +190,35 @@ export default function MancalaRoomPage() {
       </div>
 
       <ChatBox room={roomId} playerId={userId!} user={user!} />
+
+      {showEndScreen && (
+  <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50">
+    <div className="bg-white rounded-2xl p-8 shadow-2xl flex flex-col items-center max-w-sm w-full">
+      <h1 className={`text-4xl font-bold mb-4 ${didWin ? "text-green-500" : "text-red-500"}`}>
+        {didWin ? "YOU WON!" : "YOU LOST"}
+      </h1>
+      <p className="text-gray-700 text-lg mb-8 text-center">
+        {didWin ? "Congratulations on your victory!" : "Better luck next time!"}
+      </p>
+      <div className="flex gap-4">
+        <button
+          className="px-5 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg font-semibold"
+          onClick={() => window.location.href = "/games"}
+        >
+          Browse Games
+        </button>
+        <button
+          className="px-5 py-2 bg-blue-500 text-white hover:bg-blue-600 rounded-lg font-semibold"
+          onClick={handlePlayAgain}
+        >
+          Play Again
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+
     </main>
   );
 }
@@ -191,21 +246,21 @@ function Pit({
       >
         {count === 0 ? (
           <Image
-            src="/assets/pit-empty.svg"
+            src="/assets/mancala/pit-empty.svg"
             alt="Pit"
             fill
             className="object-cover rounded-full opacity-90"
           />
         ) : count > 4 ? (
           <Image
-            src={`/assets/pit-4.svg`}
+            src={`/assets/mancala/pit-4.svg`}
             alt="Pit"
             fill
             className="object-cover rounded-full opacity-90"
           />
         ) : (
           <Image
-            src={`/assets/pit-${count}.svg`}
+            src={`/assets/mancala/pit-${count}.svg`}
             alt="Pit"
             fill
             className="object-cover rounded-full opacity-90"
@@ -240,21 +295,21 @@ function Store({
       <div className="w-24 h-72 bg-yellow-200 rounded-xl shadow-inner relative">
         {count === 0 ? (
           <Image
-            src="/assets/store-empty.svg"
+            src="/assets/mancala/store-empty.svg"
             alt={`${label} Store`}
             fill
             className="object-cover rounded-xl opacity-90"
           />
         ) : count > 4 ? (
           <Image
-            src="/assets/store-4.svg"
+            src="/assets/mancala/store-4.svg"
             alt={`${label} Store`}
             fill
             className="object-cover rounded-xl opacity-90"
           />
         ) : (
           <Image
-            src={`/assets/store-${count}.svg`}
+            src={`/assets/mancala/store-${count}.svg`}
             alt={`${label} Store`}
             fill
             className="object-cover rounded-xl opacity-90"

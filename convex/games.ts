@@ -7,6 +7,7 @@ export const createGame = mutation({
     player1: v.id("users"),
     initialState: v.string(),
     createdAt: v.number(),
+    game: v.string()
   },
   handler: async (ctx, args) => {
     const existingGame = await ctx.db
@@ -27,7 +28,7 @@ export const createGame = mutation({
       chat: [],
       createdAt: args.createdAt,
       public: false,
-      game: "quoridor",
+      game: args.game,
       completed: false,
       open: true,
     });
