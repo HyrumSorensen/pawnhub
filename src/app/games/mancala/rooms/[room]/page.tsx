@@ -137,11 +137,11 @@ export default function MancalaRoomPage() {
         <Store label="P2" count={board[13]} labelPos="bottom" />
         <div className="flex flex-col gap-2">
           <div className="flex flex-row gap-2">
-            {board.slice(7, 13).map((count, i) => (
+          {[12, 11, 10, 9, 8, 7].map((index) => (
               <Pit
-                key={`p2-${i}`}
-                count={count}
-                onClick={() => handleMove(i)}
+                key={`p2-${index}`}
+                count={board[index]}
+                onClick={() => handleMove(index)}
                 isClickable={localState.currentPlayer === 2}
                 labelPos="bottom"
               />
