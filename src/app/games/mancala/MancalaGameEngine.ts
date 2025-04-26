@@ -130,4 +130,66 @@ export class MancalaGameEngine {
       console.error("Failed to load game state:", err);
     }
   }
+
+
+  // bots
+
+
+  private pickMediumMove(validPits: number[]): number {
+    // For now just random too
+    return validPits[Math.floor(Math.random() * validPits.length)];
+  }
+  
+  private pickHardMove(validPits: number[]): number {
+    // For now just random too
+    return validPits[Math.floor(Math.random() * validPits.length)];
+  }
+  
+  public async botMove(
+    playerId: MancalaPlayerId,
+    difficulty: "easy" | "medium" | "hard" = "easy"
+  ): Promise<boolean> {
+    if (this.state.gameOver || this.state.currentPlayer !== playerId) return false;
+
+    // Pick a random delay between 3–8 seconds
+    const delayMs = Math.random() * (8000 - 3000) + 3000;
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
+
+    const validRange = playerId === 1 ? [0, 5] : [7, 12];
+    const availablePits = this.state.board
+      .map((stones, index) => ({ index, stones }))
+      .filter(
+        ({ index, stones }) =>
+          index >= validRange[0] &&
+          index <= validRange[1] &&
+          stones > 0
+      )
+      .map(({ index }) => index);
+
+    if (availablePits.length === 0) {
+      return false;
+    }
+
+    let chosenPit: number;
+
+    // Future difficulty handling
+    switch (difficulty) {
+      case "medium":
+        // TODO: Add smarter medium difficulty logic
+        chosenPit = this.pickMediumMove(availablePits);
+        break;
+      case "hard":
+        // TODO: Add smarter hard difficulty logic
+        chosenPit = this.pickHardMove(availablePits);
+        break;
+      case "easy":
+      default:
+        // Easy: Pick a random pit
+        chosenPit = availablePits[Math.floor(Math.random() * availablePits.length)];
+        break;
+    }
+
+    return this.move(playerId, chosenPit);
+  }
+
 }
