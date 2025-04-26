@@ -78,7 +78,24 @@ const schema = defineSchema({
     timestamp: v.number(),
     note: v.optional(v.string()),
   }).index("by_group_user", ["groupId", "userId"]),
+
+  gameStats: defineTable({
+    userId: v.id("users"),
+    game: v.string(),       // "mancala", "quoridor", "tic-tac-toe", etc.
+    gameId: v.id("games"),   // Reference to the specific game session
+    wins: v.number(),
+    losses: v.number(),
+    gamesPlayed: v.number(),
+    winRate: v.optional(v.number()),
+    rankPoints: v.optional(v.number()),
+  
+    // Optional extras for future-proofing:
+    highestScore: v.optional(v.number()),
+    fastestWinTime: v.optional(v.number()), // in seconds
+  }).index("by_user_game", ["userId", "game"])
 });
+
+
 
 
 

@@ -112,9 +112,7 @@ export const getGameState = query({
 });
 
 export const getGame = query({
-  args: {
-    room: v.string(),
-  },
+  args: { room: v.string() },
   handler: async (ctx, args) => {
     const game = await ctx.db
       .query("games")
@@ -126,6 +124,7 @@ export const getGame = query({
     }
 
     return {
+      _id: game._id, // <-- ADD THIS
       player1: game.player1,
       player2: game.player2,
       player3: game.player3,
@@ -134,6 +133,7 @@ export const getGame = query({
     };
   },
 });
+
 
 export const setGameCompleted = mutation({
   args: {

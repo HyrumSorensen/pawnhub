@@ -14,6 +14,8 @@ import type {
   FunctionReference,
 } from "convex/server";
 import type * as auth from "../auth.js";
+import type * as gameHistory from "../gameHistory.js";
+import type * as gameResults from "../gameResults.js";
 import type * as games from "../games.js";
 import type * as http from "../http.js";
 import type * as pokerChipTracker from "../pokerChipTracker.js";
@@ -30,6 +32,8 @@ import type * as users from "../users.js";
  */
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
+  gameHistory: typeof gameHistory;
+  gameResults: typeof gameResults;
   games: typeof games;
   http: typeof http;
   pokerChipTracker: typeof pokerChipTracker;

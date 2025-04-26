@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { User, Upload } from "lucide-react";
 import { useAuthActions } from "@convex-dev/auth/react";
+import { format } from "date-fns"; // For nicer date formatting
 
 export default function ProfilePage() {
   const { signOut } = useAuthActions();
@@ -18,9 +19,14 @@ export default function ProfilePage() {
   const generateUploadUrl = useMutation(api.storage.generateUploadUrl);
   const getImageUrl = useMutation(api.storage.getImageUrl);
 
+  const myRecentGames = useQuery(api.gameHistory.getMyRecentGames, userId ? { userId, limit: 10 } : "skip");
+
+
   const [name, setName] = useState(user?.name ?? "");
   const [isEditing, setIsEditing] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [showAllGames, setShowAllGames] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSave = async () => {
@@ -38,10 +44,8 @@ export default function ProfilePage() {
 
     setIsUploading(true);
     try {
-      // Generate an upload URL
       const uploadUrl = await generateUploadUrl();
 
-      // Upload the file
       const response = await fetch(uploadUrl, {
         method: "POST",
         headers: { "Content-Type": file.type },
@@ -54,10 +58,8 @@ export default function ProfilePage() {
 
       const { storageId } = await response.json();
 
-      // Get the URL for the uploaded file
       const imageUrl = await getImageUrl({ storageId });
 
-      // Update the user's profile with the new avatar URL
       await updateProfile({
         userId,
         avatarUrl: imageUrl ?? undefined,
@@ -75,8 +77,9 @@ export default function ProfilePage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="max-w-2xl mx-auto">
+      <div className="max-w-6xl mx-auto w-full space-y-8">
         <div className="space-y-8">
+          {/* Profile Section */}
           <div className="flex items-center space-x-4">
             <div className="relative">
               <Avatar className="h-24 w-24">
@@ -108,35 +111,94 @@ export default function ProfilePage() {
             </div>
           </div>
 
+          {/* Edit Name Section */}
           <div className="space-y-4">
             <div>
               <Label htmlFor="name">Name</Label>
-              <div className="flex space-x-2">
-                <Input
-                  id="name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  disabled={!isEditing}
-                />
+              <div className="flex space-x-2 items-center">
+                <div className="max-w-sm w-full">
+                  <Input
+                    id="name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    disabled={!isEditing}
+                  />
+                </div>
                 {!isEditing ? (
                   <Button onClick={() => setIsEditing(true)}>Edit</Button>
                 ) : (
                   <Button onClick={handleSave}>Save</Button>
                 )}
               </div>
+
             </div>
 
             <div>
               <Label>Email</Label>
-              <Input value={user.email ?? ""} disabled />
+              <div className="max-w-sm w-full">
+                <Input value={user.email ?? ""} disabled />
+              </div>
+
             </div>
           </div>
 
+          {/* Sign Out */}
           <div className="pt-4">
             <Button variant="destructive" onClick={() => signOut()}>
               Sign Out
             </Button>
           </div>
+
+{/* Game History Section */}
+<div className="pt-12">
+  <h2 className="text-2xl font-bold mb-6">🕹️ Recent Games</h2>
+
+  {myRecentGames && myRecentGames.length > 0 ? (
+    <div className="overflow-x-auto">
+      <table className="min-w-full table-auto text-left border rounded-lg shadow-sm">
+        <thead className="bg-gray-100">
+          <tr>
+            <th className="px-4 py-2">Date</th>
+            <th className="px-4 py-2">Game</th>
+            <th className="px-4 py-2">Players</th>
+            <th className="px-4 py-2">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {myRecentGames.slice(0, showAllGames ? myRecentGames.length : 5).map((game) => (
+            <tr key={game.gameId} className="border-t">
+              <td className="px-4 py-2 text-sm text-gray-600">
+                {format(new Date(game.createdAt), "PPpp")}
+              </td>
+              <td className="px-4 py-2 font-semibold">
+                {game.game.charAt(0).toUpperCase() + game.game.slice(1)}
+              </td>
+              <td className="px-4 py-2 text-sm text-gray-700">
+                {game.players.join(", ")}
+              </td>
+              <td className="px-4 py-2 text-sm text-gray-500">
+                {game.completed ? "Completed" : "In Progress"}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      {/* Show More Button */}
+      {myRecentGames.length > 5 && (
+        <div className="flex justify-center mt-4">
+          <Button variant="outline" onClick={() => setShowAllGames(!showAllGames)}>
+            {showAllGames ? "Show Less" : "Show More"}
+          </Button>
+        </div>
+      )}
+    </div>
+  ) : (
+    <div className="text-gray-500">No recent games found.</div>
+  )}
+</div>
+
+
         </div>
       </div>
     </div>

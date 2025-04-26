@@ -18,6 +18,8 @@ export default function MancalaRoomPage() {
   const joinGame = useMutation(api.games.joinGame);
   const updateGameState = useMutation(api.games.updateGameState);
   const setGameCompleted = useMutation(api.games.setGameCompleted);
+  const recordGameResult = useMutation(api.gameResults.recordGameResult);
+
 
   const getGame = useQuery(api.games.getGame, { room: roomId });
   const getGameState = useQuery(api.games.getGameState, { room: roomId });
@@ -66,30 +68,45 @@ const [didWin, setDidWin] = useState<boolean | null>(null);
 
   // Sync remote state to engine
   useEffect(() => {
-    if (getGameState && engine) {
+    if (!getGameState || !engine) return;
+  
+    const syncGameState = async () => {
       const last = getGameState[getGameState.length - 1];
       if (!last) return;
-
+  
       try {
         const parsed = JSON.parse(last);
         engine.loadState(last);
         setLocalState(parsed);
+  
         if (parsed.gameOver) {
           setGameCompleted({ room: roomId });
-        
+  
           const iWon =
             (parsed.winner === 1 && userId === getGame?.player1) ||
             (parsed.winner === 2 && userId === getGame?.player2);
-        
+  
           setDidWin(iWon);
           setShowEndScreen(true);
+  
+          if (userId && getGame) {
+            await recordGameResult({
+              userId,
+              game: "mancala",
+              gameId: getGame._id,
+              won: iWon ?? false,
+            });
+          }
         }
-        
+  
       } catch (err) {
         console.error("Bad state parse:", err);
       }
-    }
-  }, [getGameState, engine, setGameCompleted, roomId]);
+    };
+  
+    syncGameState(); // 👈 call the async inner function manually
+  }, [getGameState, engine, setGameCompleted, roomId, getGame, recordGameResult, userId]);
+  
 
   async function handleMove(pitIndex: number) {
     if (!engine || !userId || !getGame || !localState) return;
